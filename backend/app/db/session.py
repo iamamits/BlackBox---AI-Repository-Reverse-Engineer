@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -15,12 +16,37 @@ class Base(DeclarativeBase):
 
 
 def normalize_database_url(url: str) -> str:
-    """Ensure database URL has the proper async driver prefix."""
+    """Ensure database URL has the proper async driver prefix and asyncpg-compatible query parameters."""
     url = url.strip()
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+asyncpg://", 1)
-    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    parsed = urlparse(url)
+    if "asyncpg" in parsed.scheme and parsed.query:
+        query_params = parse_qs(parsed.query)
+
+        # Convert libpq 'sslmode' to asyncpg 'ssl' parameter
+        sslmode_list = query_params.pop("sslmode", None)
+        if sslmode_list and sslmode_list[0].lower() in ("require", "verify-ca", "verify-full", "prefer"):
+            query_params["ssl"] = ["require"]
+        elif sslmode_list and sslmode_list[0].lower() == "disable":
+            query_params["ssl"] = ["disable"]
+
+        # Drop libpq parameters unsupported by asyncpg
+        query_params.pop("channel_binding", None)
+
+        new_query = urlencode(query_params, doseq=True)
+        url = urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment,
+        ))
+
     return url
 
 

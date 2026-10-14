@@ -21,6 +21,10 @@ def test_database_url_normalization():
     neon_url = "postgres://user:pass@ep-cool-123.neon.tech/neondb?ssl=require"
     assert normalize_database_url(neon_url) == "postgresql+asyncpg://user:pass@ep-cool-123.neon.tech/neondb?ssl=require"
 
+    # Libpq sslmode and channel_binding query params must be converted/stripped for asyncpg
+    neon_libpq_url = "postgresql://user:pass@ep-cool-123.neon.tech/neondb?sslmode=require&channel_binding=require"
+    assert normalize_database_url(neon_libpq_url) == "postgresql+asyncpg://user:pass@ep-cool-123.neon.tech/neondb?ssl=require"
+
     pg_url = "postgresql://user:pass@localhost:5432/blackbox"
     assert normalize_database_url(pg_url) == "postgresql+asyncpg://user:pass@localhost:5432/blackbox"
 
