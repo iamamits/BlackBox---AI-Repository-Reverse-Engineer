@@ -44,16 +44,18 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     log.info("BlackBox starting", env=settings.app_env, ai_enabled=settings.ai_enabled)
 
-    # Create tables (Alembic will handle this in production)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # Self-healing migration for existing databases: ensure user_id column exists on repositories
-        try:
-            from sqlalchemy import text
-            await conn.execute(text("ALTER TABLE repositories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
-        except Exception:
-            pass  # Already exists or handled by create_all
-    log.info("Database tables initialised")
+    # Create tables (self-healing resilience for cold starts)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            try:
+                from sqlalchemy import text
+                await conn.execute(text("ALTER TABLE repositories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
+            except Exception:
+                pass  # Already exists or handled by create_all
+        log.info("Database tables initialised")
+    except Exception as e:
+        log.error("Database initialization warning during startup (will retry on incoming requests)", error=str(e))
 
     yield
 
@@ -75,26 +77,34 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS (Supports localhost, Vercel production/preview deployments, and custom domains)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
-    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_origin_regex=r"^https?:\/\/.*$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ── Error handlers ────────────────────────────────────────────────────────
+# ── Error handlers with guaranteed CORS headers ──────────────────────────
 
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     log.error("Unhandled exception", exc=str(exc), path=request.url.path)
+    origin = request.headers.get("origin", "*")
+    headers = {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
     return JSONResponse(
         status_code=500,
-        content={"error": {"code": "internal_error", "message": "An internal error occurred"}},
+        content={"error": {"code": "internal_error", "message": str(exc)}},
+        headers=headers,
     )
 
 
