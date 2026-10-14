@@ -10,10 +10,10 @@
 [![NVIDIA Open Models](https://img.shields.io/badge/NVIDIA-Llama--3.1--70B-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com)
 [![Next.js 16](https://img.shields.io/badge/Frontend-Next.js%2016-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests Passing](https://img.shields.io/badge/Tests-26%2F26%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](docs/TEST_STATUS.md)
+[![Tests Passing](https://img.shields.io/badge/Tests-29%2F29%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](docs/TEST_STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-[Features](#-key-features) • [Architecture](#-architecture--cloud-infrastructure) • [Quickstart](#-quickstart-guide) • [Environment Setup](#-environment-variables) • [Demo Walkthrough](#-instant-demo-walkthrough) • [Security](#-security--safe-computing) • [API Reference](#-api-endpoints)
+[Features](#-key-features) • [Platform Gallery](#-platform-interface--screenshots) • [Architecture](#-architecture--cloud-infrastructure) • [Quickstart](#-quickstart-guide) • [Security](#-security--safe-computing) • [API Reference](#-api-endpoints)
 
 </div>
 
@@ -35,29 +35,74 @@ When developers encounter massive, undocumented, or legacy repositories, reverse
 
 ## 📸 Platform Interface & Screenshots
 
-### 1. Interactive Architecture Dependency Graph
-> *Decompile any repository into an interactive dependency map showing file relationships, import chains, and AST symbol hierarchies in real time.*
+### 1. Futuristic 3D Landing Page & System Overview
+> *Interactive particle neural canvas, five-pillar architecture overview, and live service health metrics.*
 
 <div align="center">
-  <img src="docs/images/architecture_graph.jpg" alt="BlackBox Architecture Graph" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+  <img src="docs/screenshots/01_landing_page.png" alt="BlackBox 3D Landing Page" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
 </div>
 
 <br/>
 
-### 2. Autonomous AI Investigation Studio
-> *Deep codebase reasoning grounded in real AST symbols and call edges, powered by NVIDIA open models on Nebius Token Factory with structured confidence scoring.*
+### 2. Holographic 3D Digital Twin (Ai-Job-Hunt Repository)
+> *Interactive 3D spherical topology mapping 30 source files across 3 module clusters with real-time change impact risk calculation.*
 
 <div align="center">
-  <img src="docs/images/ai_investigation.jpg" alt="AI Autonomous Investigation" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+  <img src="docs/screenshots/02_holographic_3d_twin.png" alt="Holographic 3D Digital Twin" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
 </div>
 
 <br/>
 
-### 3. Monaco Unified Diff Review & Sandboxed Test Execution
-> *Side-by-side Monaco diff inspection with regression test execution inside an isolated security sandbox with strict command allowlists.*
+### 3. 2D Interactive Architecture Graph
+> *Hierarchical call and import graph powered by NetworkX with live node inspection and dependency reachability.*
 
 <div align="center">
-  <img src="docs/images/patch_review_sandbox.jpg" alt="Patch Review and Sandbox" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+  <img src="docs/screenshots/03_2d_architecture_graph.png" alt="2D Architecture Graph" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+</div>
+
+<br/>
+
+### 4. Multi-Language AST Symbol Explorer
+> *Line-accurate symbol parsing for Python and TypeScript/JavaScript with instant code preview, signatures, and docstrings.*
+
+<div align="center">
+  <img src="docs/screenshots/04_ast_symbol_explorer.png" alt="AST Symbol Explorer" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+</div>
+
+<br/>
+
+### 5. Autonomous AI Investigation Studio (NVIDIA Open Models)
+> *Deep codebase reasoning powered by NVIDIA Nemotron-3 on Nebius Token Factory with grounded citations and structured findings.*
+
+<div align="center">
+  <img src="docs/screenshots/05_ai_investigation_studio.png" alt="NVIDIA AI Investigation Studio" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+</div>
+
+<br/>
+
+### 6. Patch Review & Sandboxed Test Execution
+> *Autonomous unified diff proposal with sandboxed test runner execution and strict command allowlists.*
+
+<div align="center">
+  <img src="docs/screenshots/06_patch_and_sandbox.png" alt="Patch Review and Sandbox" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+</div>
+
+<br/>
+
+### 7. Institutional Audit Report & Codebase Health Scoring
+> *Audit score calculation (98/100, Grade A+) with component language distribution and exportable HTML/Markdown/JSON downloads.*
+
+<div align="center">
+  <img src="docs/screenshots/07_institutional_audit_report.png" alt="Institutional Audit Report" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
+</div>
+
+<br/>
+
+### 8. Neural Link: Token-Aware Multi-Agent Context Compiler
+> *Zero-loss persistent project memory synthesizer with SHA-256 fingerprinting and one-click AGENTS.md export.*
+
+<div align="center">
+  <img src="docs/screenshots/08_neural_link_context_compiler.png" alt="Neural Link Context Compiler" width="100%" style="border-radius: 12px; border: 1px solid #334155; box-shadow: 0 8px 32px rgba(0,0,0,0.5);" />
 </div>
 
 ---
