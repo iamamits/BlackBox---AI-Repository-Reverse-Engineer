@@ -319,11 +319,11 @@ export async function importLocalRepo(name: string, path: string): Promise<RepoS
   return await res.json();
 }
 
-export async function importGitRepo(url: string, branch: string = "main"): Promise<RepoSummary> {
+export async function importGitRepo(url: string, name?: string): Promise<RepoSummary> {
   const res = await fetch(`${API_BASE}/api/v1/repos/import/git`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ url, branch }),
+    body: JSON.stringify({ url, name: name || undefined }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Git import failed" }));

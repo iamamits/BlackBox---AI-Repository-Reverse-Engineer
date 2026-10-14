@@ -165,7 +165,7 @@ export default function Home() {
 
   // Domain State
   const [repos, setRepos] = useState<RepoSummary[]>(SAMPLE_REPOS);
-  const [activeRepo, setActiveRepo] = useState<RepoSummary>(SAMPLE_REPOS[0]);
+  const [activeRepo, setActiveRepo] = useState<RepoSummary | null>(SAMPLE_REPOS[0]);
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolItem>(SAMPLE_SYMBOLS[0]);
   const [symbolQuery, setSymbolQuery] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
@@ -263,6 +263,9 @@ export default function Home() {
       if (data && data.length > 0) {
         setRepos(data);
         setActiveRepo(data[0]);
+      } else {
+        setRepos([]);
+        setActiveRepo(null);
       }
     });
 
@@ -287,6 +290,13 @@ export default function Home() {
     const repoList = await fetchRepositories();
     if (repoList && repoList.length > 0) {
       setRepos(repoList);
+      setActiveRepo((prev) => {
+        const found = repoList.find((r) => r.id === prev?.id);
+        return found || repoList[0];
+      });
+    } else {
+      setRepos([]);
+      setActiveRepo(null);
     }
   };
 
@@ -309,7 +319,7 @@ export default function Home() {
 
   const handleStartInvestigation = async (customQ?: string) => {
     const q = customQ || question;
-    if (!q.trim()) return;
+    if (!q.trim() || !activeRepo) return;
     setIsInvestigating(true);
 
     try {
@@ -353,16 +363,47 @@ export default function Home() {
     e.preventDefault();
     setImporting(true);
     try {
+      let finalName = importName.trim();
+      if (!finalName && importType === "git") {
+        const segs = importPath.replace(/\/+$/, "").split("/");
+        finalName = (segs[segs.length - 1] || "repo").replace(/\.git$/i, "");
+      }
+      if (!finalName) finalName = "Imported Repository";
+
       let newRepo: RepoSummary;
       if (importType === "local") {
-        newRepo = await importLocalRepo(importName, importPath);
+        newRepo = await importLocalRepo(finalName, importPath);
       } else {
-        newRepo = await importGitRepo(importPath);
+        newRepo = await importGitRepo(importPath, finalName);
       }
-      setRepos([newRepo, ...repos]);
+
+      setRepos((prev) => [newRepo, ...prev.filter((r) => r.id !== newRepo.id)]);
       setActiveRepo(newRepo);
       setShowImportModal(false);
-      await refreshUserData();
+      setImportName("");
+      setImportPath("");
+
+      // Poll background indexing until status is ready or max attempts reached
+      let attempts = 0;
+      const pollTimer = setInterval(async () => {
+        attempts++;
+        try {
+          const updatedList = await fetchRepositories();
+          if (updatedList && updatedList.length > 0) {
+            setRepos(updatedList);
+            const found = updatedList.find((r) => r.id === newRepo.id);
+            if (found) {
+              setActiveRepo(found);
+              if (found.status === "ready" || found.status === "error" || attempts >= 25) {
+                clearInterval(pollTimer);
+              }
+            }
+          }
+        } catch {
+          // ignore transient poll error
+        }
+        if (attempts >= 25) clearInterval(pollTimer);
+      }, 2000);
     } catch (err: any) {
       setDiagnosticError({
         title: "Repository Ingestion Alert",
@@ -458,18 +499,30 @@ export default function Home() {
                 <FolderGit2 className="w-3.5 h-3.5 text-indigo-400" />
                 <select
                   aria-label="Select Repository"
-                  className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer max-w-[140px] truncate"
-                  value={activeRepo.id}
+                  className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer max-w-[150px] truncate"
+                  value={activeRepo ? activeRepo.id : "none"}
                   onChange={(e) => {
+                    if (e.target.value === "new") {
+                      setShowImportModal(true);
+                      return;
+                    }
                     const r = repos.find((x) => x.id === Number(e.target.value));
                     if (r) setActiveRepo(r);
                   }}
                 >
+                  {repos.length === 0 && (
+                    <option value="none" className="bg-slate-900 text-slate-400">
+                      No Vault Connected
+                    </option>
+                  )}
                   {repos.map((r) => (
                     <option key={r.id} value={r.id} className="bg-slate-900 text-slate-200">
                       {r.name}
                     </option>
                   ))}
+                  <option value="new" className="bg-indigo-950 text-indigo-300 font-bold">
+                    + Ingest / Clone Repo...
+                  </option>
                 </select>
               </div>
             )}
@@ -898,6 +951,13 @@ export default function Home() {
 
             <div className="flex items-center gap-2 shrink-0">
               <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Ingest / Clone Repo</span>
+              </button>
+              <button
                 onClick={() => setShowNeuralLinkModal(true)}
                 className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-purple-300 bg-purple-950/40 border border-purple-500/30 hover:bg-purple-900/50 transition"
               >
@@ -914,17 +974,73 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Studio Tab 0: Holographic 3D Digital Twin */}
-          {activeTab === "holographic" && (
-            <HolographicExplorer
-              repoId={activeRepo.id}
-              repoName={activeRepo.name}
-              onOpenFile={(path) => {
-                setActiveTab("symbols");
-                setSymbolQuery(path);
-              }}
-            />
-          )}
+          {!activeRepo ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-xl mx-auto my-12">
+              <div className="relative mb-5">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-xl shadow-indigo-500/20">
+                  <FolderGit2 className="w-8 h-8" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#090d18] animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No Repositories in Your Vault</h3>
+              <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                Connect your codebase or enter any public Git repository URL (e.g. GitHub) to reverse-engineer its AST call graph, inspect 3D topologies, and run AI investigations.
+              </p>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 mb-6 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Ingest Git Repository Now</span>
+              </button>
+
+              <div className="w-full p-4 rounded-xl bg-slate-900/70 border border-slate-800 text-left">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>One-Click Test Repositories</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setImportType("git");
+                      setImportPath("https://github.com/Hack-with-Github/Awesome-Hacking");
+                      setImportName("Awesome-Hacking");
+                      setShowImportModal(true);
+                    }}
+                    className="p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition hover:border-indigo-500/50"
+                  >
+                    <div className="text-xs font-semibold text-white">Awesome-Hacking</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">github.com/.../Awesome-Hacking</div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImportType("git");
+                      setImportPath("https://github.com/fastapi/fastapi");
+                      setImportName("FastAPI");
+                      setShowImportModal(true);
+                    }}
+                    className="p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition hover:border-indigo-500/50"
+                  >
+                    <div className="text-xs font-semibold text-white">FastAPI Microservices</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">github.com/fastapi/fastapi</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Studio Tab 0: Holographic 3D Digital Twin */}
+              {activeTab === "holographic" && (
+                <HolographicExplorer
+                  repoId={activeRepo.id}
+                  repoName={activeRepo.name}
+                  onOpenFile={(path) => {
+                    setActiveTab("symbols");
+                    setSymbolQuery(path);
+                  }}
+                  onOpenImport={() => setShowImportModal(true)}
+                />
+              )}
 
           {/* Studio Tab 1: Architecture Graph */}
           {activeTab === "graph" && (
@@ -1193,6 +1309,8 @@ export default function Home() {
               </div>
             </div>
           )}
+            </>
+          )}
         </main>
       )}
 
@@ -1223,20 +1341,24 @@ export default function Home() {
       />
 
       {/* Institutional Audit Report Modal */}
-      <ReportModal
-        isOpen={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        repoId={activeRepo.id}
-        repoName={activeRepo.name}
-      />
+      {activeRepo && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          repoId={activeRepo.id}
+          repoName={activeRepo.name}
+        />
+      )}
 
       {/* Neural Link: AI Agent Context Center Modal */}
-      <NeuralLinkModal
-        isOpen={showNeuralLinkModal}
-        onClose={() => setShowNeuralLinkModal(false)}
-        repoId={activeRepo.id}
-        repoName={activeRepo.name}
-      />
+      {activeRepo && (
+        <NeuralLinkModal
+          isOpen={showNeuralLinkModal}
+          onClose={() => setShowNeuralLinkModal(false)}
+          repoId={activeRepo.id}
+          repoName={activeRepo.name}
+        />
+      )}
 
       {/* Detailed Diagnostic Error Banner */}
       <ErrorDiagnosticBanner
@@ -1266,7 +1388,7 @@ export default function Home() {
                 type="button"
                 onClick={() => setImportType("local")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${
-                  importType === "local" ? "bg-indigo-600 text-white" : "text-slate-400"
+                  importType === "local" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
                 Local Path
@@ -1275,26 +1397,73 @@ export default function Home() {
                 type="button"
                 onClick={() => setImportType("git")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${
-                  importType === "git" ? "bg-indigo-600 text-white" : "text-slate-400"
+                  importType === "git" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
                 Git URL
               </button>
             </div>
 
-            <form onSubmit={handleImportSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Repository Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. BlackBox Core"
-                  value={importName}
-                  onChange={(e) => setImportName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
-                />
+            {/* Quick Presets */}
+            {importType === "git" ? (
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  <span>Quick Test Presets</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPath("https://github.com/Hack-with-Github/Awesome-Hacking");
+                      setImportName("Awesome-Hacking");
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800/80 hover:bg-slate-750 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400 transition"
+                  >
+                    ⚡ Awesome-Hacking
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPath("https://github.com/fastapi/fastapi");
+                      setImportName("FastAPI");
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800/80 hover:bg-slate-750 text-purple-300 border border-purple-500/30 hover:border-purple-400 transition"
+                  >
+                    ⚡ FastAPI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPath("https://github.com/pallets/flask");
+                      setImportName("Flask");
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800/80 hover:bg-slate-750 text-emerald-300 border border-emerald-500/30 hover:border-emerald-400 transition"
+                  >
+                    ⚡ Flask
+                  </button>
+                </div>
               </div>
+            ) : (
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  <span>Quick Test Preset</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportPath("E:/BlackBox — AI Repository Reverse Engineer");
+                    setImportName("BlackBox — Current Project");
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800/80 hover:bg-slate-750 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400 transition"
+                >
+                  ⚡ BlackBox — Current Project
+                </button>
+              </div>
+            )}
 
+            <form onSubmit={handleImportSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-300 mb-1">
                   {importType === "local" ? "Absolute Local Path" : "Git Repository URL"}
@@ -1304,21 +1473,52 @@ export default function Home() {
                   required
                   placeholder={
                     importType === "local"
-                      ? "E:/Projects/my-service"
-                      : "https://github.com/fastapi/fastapi"
+                      ? "E:/BlackBox — AI Repository Reverse Engineer"
+                      : "https://github.com/Hack-with-Github/Awesome-Hacking"
                   }
                   value={importPath}
-                  onChange={(e) => setImportPath(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setImportPath(val);
+                    if (importType === "git" && !importName) {
+                      const clean = val.replace(/\/+$/, "");
+                      const segment = clean.split("/").pop();
+                      if (segment && !segment.includes(".")) {
+                        setImportName(segment.replace(/\.git$/i, ""));
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-300">Repository Name</label>
+                  <span className="text-[10px] text-slate-500 font-mono">(optional — auto-inferred)</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder={importType === "git" ? "e.g. Awesome-Hacking (auto-inferred from URL)" : "e.g. BlackBox Core"}
+                  value={importName}
+                  onChange={(e) => setImportName(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={importing}
-                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition"
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
               >
-                {importing ? "Ingesting AST Symbols..." : "Start Ingestion"}
+                {importing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Cloning & Indexing Repository...</span>
+                  </>
+                ) : (
+                  <span>Start Reverse-Engineering Ingestion</span>
+                )}
               </button>
             </form>
           </div>

@@ -21,6 +21,7 @@
 | 8  | Auth, Data Isolation, 3D Landing Page & Institutional Report Engine    | ✅ Complete     |
 | 9  | Holographic 3D Digital Twin Explorer & Live Impact Reachability        | ✅ Complete     |
 | 10 | Neural Link Persistent Context Compiler & Multi-Agent Export Center    | ✅ Complete     |
+| 11 | Robust Git Ingestion Engine, Resilient Vault Onboarding & SSRF Safety  | ✅ Complete     |
 
 ## Completed Work
 
@@ -75,11 +76,12 @@
 - [x] **Holographic Explorer UI** (`frontend/components/HolographicExplorer.tsx`): 3D orbital space projection, dynamic rotation, pan/zoom controls, node category filtering, selected node inspector, and 2D high-contrast fallback.
 - [x] **Live Change Impact Analysis** (`/api/v1/visualization/{repo_id}/impact`): NetworkX reachability algorithms to compute direct callers, downstream dependencies, blast radius, risk level (Low, Medium, High, Critical), and recommended test suites.
 
-### Milestone 10 — Neural Link Context Compiler & Detailed Error Diagnostics
-- [x] **Persistent Project Memory** (`app/api/neural_link.py`, `app/core/models.py`): Content-fingerprinted project memory model (`ProjectMemory`, `ContextPack`) storing architecture, module summaries, test status, and freshness tracking.
-- [x] **Token-Aware Context Compiler** (`/api/v1/neural-link/{repo_id}/compile`): Dynamic context packing based on token budgets (2K - 64K tokens) targeted specifically for AI coding agents (Cursor, Windsurf, Claude Code, Antigravity, Codex).
-- [x] **Multi-Agent Export Center**: One-click download of canonical `AGENTS.md`, full Markdown dossier, or structured JSON.
-- [x] **Smart Error Diagnostics** (`frontend/components/ErrorDiagnosticBanner.tsx`): Actionable troubleshooting advice, explicit error codes, expandable raw HTTP details, and direct retry handlers.
+### Milestone 11 — Git Ingestion Engine, Resilient Vault Onboarding & SSRF Safety
+- [x] **Git Ingestion Engine** (`app/indexing/git_service.py`): Dual-strategy clone (`git clone --depth 1` + HTTP ZIP archive download fallback with bomb limits), SSRF validation blocking private IPs and cloud metadata endpoints.
+- [x] **Automatic Repository Name Extraction**: Infers clean repo names from Git URLs (`https://github.com/Hack-with-Github/Awesome-Hacking` -> `Awesome-Hacking`).
+- [x] **Graceful Empty State & Onboarding UI**: Resilient studio experience for new users, eliminating 404 topology queries on non-existent repositories.
+- [x] **Accessible Import Entrypoints**: Added high-visibility `+ Ingest / Clone Repo` button in Studio subheader, dropdown selector option, and one-click quick presets (`Awesome-Hacking`, `FastAPI Hub`).
+- [x] **Background Indexing Polling**: Real-time polling transition from `pending`/`indexing` to `ready`.
 
 ## Active Blockers
 
@@ -94,4 +96,4 @@ None.
 
 ## Next Step
 
-→ Platform is 100% complete, verified with 26/26 backend unit/integration tests and zero-error Next.js production build. Ready for live demo, repo reverse engineering, and hackathon presentation.
+→ Platform is 100% complete, verified with 29/29 backend unit/integration tests and zero-error Next.js production build. Ready for live demo, repo reverse engineering, and hackathon presentation.

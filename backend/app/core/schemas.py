@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -53,7 +53,7 @@ class RepoImportLocal(BaseModel):
 
 
 class RepoImportGit(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
+    name: Optional[str] = Field(None, max_length=255, description="Repository name (inferred from URL if omitted)")
     url: str = Field(..., description="Public Git repository URL")
 
 

@@ -33,9 +33,10 @@ interface HolographicExplorerProps {
   repoId: number;
   repoName: string;
   onOpenFile?: (filePath: string) => void;
+  onOpenImport?: () => void;
 }
 
-export default function HolographicExplorer({ repoId, repoName, onOpenFile }: HolographicExplorerProps) {
+export default function HolographicExplorer({ repoId, repoName, onOpenFile, onOpenImport }: HolographicExplorerProps) {
   const [topology, setTopology] = useState<HolographicTopology | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -405,8 +406,48 @@ export default function HolographicExplorer({ repoId, repoName, onOpenFile }: Ho
           )}
 
           {error && (
-            <div className="absolute top-6 left-6 right-6 z-20 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-              {error}
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm text-center">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-3">
+                <Network className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-white mb-1">
+                Repository Topology Not Available
+              </h4>
+              <p className="text-xs text-slate-400 max-w-sm mb-4">
+                {error.includes("404") || error.includes("not found")
+                  ? `Repository #${repoId} is not in your current database vault. Import a repository via Git URL or local folder to begin.`
+                  : error}
+              </p>
+              {onOpenImport && (
+                <button
+                  onClick={onOpenImport}
+                  className="py-2 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30"
+                >
+                  + Ingest Git Repository Now
+                </button>
+              )}
+            </div>
+          )}
+
+          {!loading && !error && topology && topology.nodes.length === 0 && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm text-center">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-3">
+                <FileCode2 className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-white mb-1">
+                Indexing In Progress or Empty
+              </h4>
+              <p className="text-xs text-slate-400 max-w-sm mb-4">
+                No code symbols or files have been indexed for &ldquo;{repoName}&rdquo; yet. Files are being scanned in the background.
+              </p>
+              {onOpenImport && (
+                <button
+                  onClick={onOpenImport}
+                  className="py-2 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30"
+                >
+                  + Ingest Another Repository
+                </button>
+              )}
             </div>
           )}
 

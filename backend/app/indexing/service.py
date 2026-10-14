@@ -15,6 +15,7 @@ from app.core.models import (
     ParseStatus,
     Repository,
     RepoStatus,
+    SourceType,
     Symbol,
 )
 from app.db.session import AsyncSessionLocal
@@ -41,7 +42,43 @@ async def index_repository(repo_id: int) -> None:
             log.error("Repository not found for indexing", repo_id=repo_id)
             raise ValueError(f"Repository {repo_id} not found for indexing")
 
-        target_dir = Path(repo.workspace_path or repo.source_path)
+        from app.indexing.git_service import clone_git_repo
+        from app.config import get_settings
+        import zipfile
+
+        settings = get_settings()
+
+        # Handle GIT cloning
+        if repo.source_type == SourceType.GIT:
+            if not repo.workspace_path:
+                repo.workspace_path = str(settings.workspace_root / f"repo_git_{repo.id}")
+            target_dir = Path(repo.workspace_path)
+            if not target_dir.exists() or not any(target_dir.iterdir()):
+                repo.status = RepoStatus.INDEXING
+                repo.index_progress = 0.1
+                await db.commit()
+                log.info("Cloning Git repository into workspace", repo_id=repo.id, url=repo.source_path, dest=str(target_dir))
+                success, clone_msg = await clone_git_repo(repo.source_path, target_dir)
+                if not success:
+                    repo.status = RepoStatus.ERROR
+                    repo.error_message = f"Git clone failed: {clone_msg}"
+                    await db.commit()
+                    log.error("Git clone failed", repo_id=repo.id, error=clone_msg)
+                    return
+        elif repo.source_type == SourceType.ZIP:
+            target_dir = Path(repo.workspace_path or settings.workspace_root / f"zip_{repo.id}")
+            repo.workspace_path = str(target_dir)
+            zip_file = Path(repo.source_path)
+            if zip_file.exists() and zip_file.is_file() and zip_file.suffix.lower() == ".zip":
+                target_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    with zipfile.ZipFile(zip_file, "r") as zf:
+                        zf.extractall(target_dir)
+                except Exception as ex:
+                    log.warning("ZIP extraction failed", error=str(ex))
+        else:
+            target_dir = Path(repo.workspace_path or repo.source_path)
+
         if not target_dir.exists():
             repo.status = RepoStatus.ERROR
             repo.error_message = f"Repository path not found: {target_dir}"
@@ -49,7 +86,7 @@ async def index_repository(repo_id: int) -> None:
             return
 
         repo.status = RepoStatus.INDEXING
-        repo.index_progress = 0.05
+        repo.index_progress = 0.25
         await db.commit()
 
         # Step 1: Discover files

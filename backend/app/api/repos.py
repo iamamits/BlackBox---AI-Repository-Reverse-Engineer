@@ -144,18 +144,27 @@ async def import_git(
     optional_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepoRead:
-    # URL validation — Milestone 3 adds full SSRF protection
+    from app.indexing.git_service import extract_repo_name, validate_git_url
+    import uuid
+
     url = payload.url.strip()
-    if not (url.startswith("https://") or url.startswith("http://")):
+    is_valid, err_msg = validate_git_url(url)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only http:// and https:// Git URLs are supported",
+            detail=err_msg,
         )
+
+    settings = get_settings()
+    clean_name = payload.name.strip() if payload.name and payload.name.strip() else extract_repo_name(url)
+    dest = settings.workspace_root / f"repo_git_{clean_name}_{uuid.uuid4().hex[:6]}"
+
     repo = Repository(
         user_id=optional_user.id if optional_user else None,
-        name=payload.name,
+        name=clean_name,
         source_type=SourceType.GIT,
         source_path=url,
+        workspace_path=str(dest),
         status=RepoStatus.PENDING,
     )
     db.add(repo)
