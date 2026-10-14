@@ -48,6 +48,92 @@ class NebiusAIProvider:
             return match.group(1).strip()
         return text
 
+    async def test_connection(self, model: Optional[str] = None) -> dict[str, Any]:
+        """Test inference connectivity with a light ping prompt and measure latency."""
+        import time
+
+        if not self.is_configured:
+            return {
+                "status": "unconfigured",
+                "configured": False,
+                "latency_ms": None,
+                "model": model or self.model,
+                "message": "Nebius API key is not configured. Set NEBIUS_API_KEY in backend/.env.",
+            }
+
+        selected_model = model or self.model
+        endpoint = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": selected_model,
+            "messages": [
+                {"role": "user", "content": "Respond with the word 'OK' if you can read this."}
+            ],
+            "max_tokens": 10,
+            "temperature": 0.0,
+        }
+
+        start_time = time.perf_counter()
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(endpoint, headers=headers, json=payload)
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    reply = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    return {
+                        "status": "connected",
+                        "configured": True,
+                        "latency_ms": elapsed_ms,
+                        "model": selected_model,
+                        "message": f"Verified in {elapsed_ms}ms ({selected_model})",
+                        "reply": reply[:50],
+                    }
+                elif resp.status_code == 401:
+                    return {
+                        "status": "error",
+                        "configured": True,
+                        "latency_ms": elapsed_ms,
+                        "model": selected_model,
+                        "message": "Authentication failed (HTTP 401). Please verify your NEBIUS_API_KEY in backend/.env.",
+                    }
+                elif resp.status_code == 429:
+                    return {
+                        "status": "rate_limited",
+                        "configured": True,
+                        "latency_ms": elapsed_ms,
+                        "model": selected_model,
+                        "message": "Rate limit exceeded (HTTP 429). Please wait before testing again.",
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "configured": True,
+                        "latency_ms": elapsed_ms,
+                        "model": selected_model,
+                        "message": f"Nebius API returned HTTP {resp.status_code}: {resp.text[:100]}",
+                    }
+        except httpx.TimeoutException:
+            return {
+                "status": "timeout",
+                "configured": True,
+                "latency_ms": None,
+                "model": selected_model,
+                "message": "Connection timed out after 10.0s. Please check network connectivity.",
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "configured": True,
+                "latency_ms": None,
+                "model": selected_model,
+                "message": f"Connection error: {str(e)}",
+            }
+
     async def investigate(
         self,
         repo_name: str,

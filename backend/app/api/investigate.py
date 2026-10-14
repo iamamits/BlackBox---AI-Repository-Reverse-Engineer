@@ -35,11 +35,12 @@ async def create_investigation(
     if not repo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
 
+    selected_model = payload.model or settings.nebius_model
     investigation = Investigation(
         repository_id=payload.repository_id,
         question=payload.question,
         status=InvestigationStatus.PENDING,
-        model_used=settings.nebius_model if settings.ai_enabled else None,
+        model_used=selected_model if settings.ai_enabled else None,
         provider_used="nebius" if settings.ai_enabled else None,
     )
     db.add(investigation)
@@ -158,7 +159,7 @@ async def _run_investigation(investigation_id: int) -> None:
             ]
 
             # 3. Call AI provider
-            provider = NebiusAIProvider()
+            provider = NebiusAIProvider(model=inv.model_used)
             output = await provider.investigate(
                 repo_name=repo.name,
                 question=inv.question,

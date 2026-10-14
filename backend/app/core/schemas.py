@@ -215,6 +215,7 @@ class EvidenceRef(BaseModel):
 class InvestigationCreate(BaseModel):
     repository_id: int
     question: str = Field(..., min_length=5, max_length=4000)
+    model: str | None = Field(None, description="Optional LLM model override")
 
 
 class InvestigationRead(BaseModel):

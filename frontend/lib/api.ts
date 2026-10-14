@@ -144,11 +144,99 @@ export async function importGitRepo(url: string, branch: string = "main"): Promi
   return await res.json();
 }
 
-export async function startInvestigation(repoId: number, question: string): Promise<InvestigationResult> {
+export interface AIModelItem {
+  id: string;
+  name: string;
+  tag: string;
+  tier: string;
+  description: string;
+  context_window: string;
+  recommended: boolean;
+}
+
+export interface TestLLMResponse {
+  status: "connected" | "unconfigured" | "error" | "rate_limited" | "timeout";
+  configured: boolean;
+  latency_ms?: number | null;
+  model: string;
+  message: string;
+  reply?: string;
+}
+
+export async function fetchAIModels(): Promise<AIModelItem[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/ai/models`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch models");
+    return await res.json();
+  } catch (err) {
+    return [
+      {
+        id: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+        name: "Llama 3.1 70B Instruct",
+        tag: "Flagship",
+        tier: "High Accuracy",
+        description: "NVIDIA premier open model. Best for deep architectural analysis and diff patches.",
+        context_window: "128K",
+        recommended: true,
+      },
+      {
+        id: "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        name: "Llama 3.1 8B Instruct",
+        tag: "Ultra Fast",
+        tier: "Lightweight & Fast",
+        description: "Lightning fast inference and minimal token consumption. Free tier friendly.",
+        context_window: "128K",
+        recommended: false,
+      },
+      {
+        id: "Qwen/Qwen2.5-Coder-32B-Instruct",
+        name: "Qwen 2.5 Coder 32B",
+        tag: "Code Specialist",
+        tier: "Coding Pro",
+        description: "Benchmark-topping code comprehension and syntax analysis.",
+        context_window: "32K",
+        recommended: false,
+      },
+      {
+        id: "mistralai/Mistral-7B-Instruct-v0.3",
+        name: "Mistral 7B Instruct v0.3",
+        tag: "Compact",
+        tier: "Low Latency",
+        description: "High token efficiency with concise technical explanations.",
+        context_window: "32K",
+        recommended: false,
+      },
+    ];
+  }
+}
+
+export async function testLLMConnection(model?: string): Promise<TestLLMResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/ai/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Connection test request failed" }));
+    return {
+      status: "error",
+      configured: false,
+      model: model || "unknown",
+      message: err.detail || `Server returned HTTP ${res.status}`,
+    };
+  }
+  return await res.json();
+}
+
+export async function startInvestigation(
+  repoId: number,
+  question: string,
+  model?: string
+): Promise<InvestigationResult> {
   const res = await fetch(`${API_BASE}/api/v1/investigations/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repository_id: repoId, question }),
+    body: JSON.stringify({ repository_id: repoId, question, model }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Failed to start investigation" }));
@@ -156,3 +244,4 @@ export async function startInvestigation(repoId: number, question: string): Prom
   }
   return await res.json();
 }
+

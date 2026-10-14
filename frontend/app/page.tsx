@@ -33,8 +33,12 @@ import {
   SymbolItem,
   InvestigationResult,
   ProposedPatch,
+  AIModelItem,
+  TestLLMResponse,
   fetchHealth,
   fetchRepositories,
+  fetchAIModels,
+  testLLMConnection,
   importLocalRepo,
   importGitRepo,
   startInvestigation
@@ -211,6 +215,12 @@ export default function Home() {
     test_output: "pytest tests/test_smoke.py\n============================== 3 passed in 1.13s =============================="
   });
 
+  // AI Models & Connection Test State
+  const [aiModels, setAiModels] = useState<AIModelItem[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("meta-llama/Meta-Llama-3.1-70B-Instruct");
+  const [isTestingLLM, setIsTestingLLM] = useState<boolean>(false);
+  const [llmTestResult, setLlmTestResult] = useState<TestLLMResponse | null>(null);
+
   useEffect(() => {
     fetchHealth().then(setHealth);
     fetchRepositories().then((data) => {
@@ -219,7 +229,31 @@ export default function Home() {
         setActiveRepo(data[0]);
       }
     });
+    fetchAIModels().then((models) => {
+      if (models && models.length > 0) {
+        setAiModels(models);
+        const rec = models.find((m) => m.recommended) || models[0];
+        setSelectedModel(rec.id);
+      }
+    });
   }, []);
+
+  const handleTestLLM = async () => {
+    setIsTestingLLM(true);
+    try {
+      const res = await testLLMConnection(selectedModel);
+      setLlmTestResult(res);
+    } catch (err: any) {
+      setLlmTestResult({
+        status: "error",
+        configured: false,
+        model: selectedModel,
+        message: err.message || "Failed to contact backend test endpoint",
+      });
+    } finally {
+      setIsTestingLLM(false);
+    }
+  };
 
   const handleStartInvestigation = async (customQ?: string) => {
     const q = customQ || question;
@@ -227,7 +261,7 @@ export default function Home() {
     setIsInvestigating(true);
 
     try {
-      const result = await startInvestigation(activeRepo.id, q);
+      const result = await startInvestigation(activeRepo.id, q, selectedModel);
       setInvestigations([result, ...investigations]);
       setQuestion("");
     } catch {
@@ -618,13 +652,109 @@ ${selectedSymbol.signature}:
         {activeTab === "ai" && (
           <div className="space-y-6">
             {/* Input Bar with Presets */}
+            {/* Input Bar with Model Selector & Test Connection */}
             <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-indigo-950/30 border border-indigo-500/20 shadow-xl space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-sm text-white">Repository AI Autonomous Investigation</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Grounded on Nebius / NVIDIA Open Models
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <h3 className="font-bold text-sm text-white">Repository AI Autonomous Investigation</h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Grounded on Nebius / NVIDIA Open Models
+                  </span>
+                </div>
+
+                {/* Test LLM Connection Status & Button */}
+                <div className="flex items-center gap-2">
+                  {llmTestResult && (
+                    <div
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border font-medium ${
+                        llmTestResult.status === "connected"
+                          ? "bg-emerald-950/70 text-emerald-300 border-emerald-800/60"
+                          : llmTestResult.status === "unconfigured"
+                          ? "bg-amber-950/70 text-amber-300 border-amber-800/60"
+                          : "bg-rose-950/70 text-rose-300 border-rose-800/60"
+                      }`}
+                    >
+                      {llmTestResult.status === "connected" ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Connected ({llmTestResult.latency_ms}ms)</span>
+                        </>
+                      ) : llmTestResult.status === "unconfigured" ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Missing NEBIUS_API_KEY</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                          <span className="truncate max-w-[200px]" title={llmTestResult.message}>
+                            {llmTestResult.message}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleTestLLM}
+                    disabled={isTestingLLM}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700/80 transition disabled:opacity-50"
+                  >
+                    {isTestingLLM ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                        <span>Testing Connection...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Test LLM</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Model Selector Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-400 font-medium">Model:</span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      setSelectedModel(e.target.value);
+                      setLlmTestResult(null);
+                    }}
+                    className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {aiModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} — {m.tier} {m.recommended ? "(Recommended)" : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Model spec pill */}
+                  {(() => {
+                    const activeObj = aiModels.find((m) => m.id === selectedModel);
+                    return activeObj ? (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                        {activeObj.tag} • Context {activeObj.context_window}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+
+                {/* Model description */}
+                {(() => {
+                  const activeObj = aiModels.find((m) => m.id === selectedModel);
+                  return activeObj ? (
+                    <div className="text-[11px] text-slate-400 truncate max-w-md">
+                      {activeObj.description}
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="flex gap-2">

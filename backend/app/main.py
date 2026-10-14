@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.db.session import Base, engine
-from app.api import repos, indexing, search, graph, investigate, patches
+from app.api import repos, indexing, search, graph, investigate, patches, ai
 
 # ── Logging ───────────────────────────────────────────────────────────────
 
@@ -175,3 +175,4 @@ app.include_router(search.router, prefix=API_PREFIX)
 app.include_router(graph.router, prefix=API_PREFIX)
 app.include_router(investigate.router, prefix=API_PREFIX)
 app.include_router(patches.router, prefix=API_PREFIX)
+app.include_router(ai.router, prefix=API_PREFIX)
