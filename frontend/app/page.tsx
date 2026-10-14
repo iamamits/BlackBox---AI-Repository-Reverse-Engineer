@@ -62,6 +62,9 @@ import Neural3DCanvas from "../components/Neural3DCanvas";
 import AuthModal from "../components/AuthModal";
 import UserProfileModal from "../components/UserProfileModal";
 import ReportModal from "../components/ReportModal";
+import HolographicExplorer from "../components/HolographicExplorer";
+import NeuralLinkModal from "../components/NeuralLinkModal";
+import ErrorDiagnosticBanner, { DiagnosticError } from "../components/ErrorDiagnosticBanner";
 
 // Initial sample data for instantaneous interactive exploration
 const SAMPLE_REPOS: RepoSummary[] = [
@@ -147,7 +150,7 @@ const SAMPLE_SYMBOLS: SymbolItem[] = [
 export default function Home() {
   // Navigation & View Mode
   const [viewMode, setViewMode] = useState<"landing" | "studio">("landing");
-  const [activeTab, setActiveTab] = useState<"graph" | "symbols" | "ai" | "sandbox">("graph");
+  const [activeTab, setActiveTab] = useState<"holographic" | "graph" | "symbols" | "ai" | "sandbox">("holographic");
 
   // Authentication & Profile State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -155,8 +158,10 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
 
-  // Report Engine State
+  // Modals & Diagnostics State
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [showNeuralLinkModal, setShowNeuralLinkModal] = useState<boolean>(false);
+  const [diagnosticError, setDiagnosticError] = useState<DiagnosticError | null>(null);
 
   // Domain State
   const [repos, setRepos] = useState<RepoSummary[]>(SAMPLE_REPOS);
@@ -359,7 +364,13 @@ export default function Home() {
       setShowImportModal(false);
       await refreshUserData();
     } catch (err: any) {
-      alert("Import notice: " + (err.message || "Processed into repository index"));
+      setDiagnosticError({
+        title: "Repository Ingestion Alert",
+        message: err.message || "Failed to process repository folder or git URL",
+        status: 400,
+        endpoint: `/api/v1/repos/import/${importType}`,
+        suggestedAction: "Ensure the path exists on disk or verify the public Git URL is reachable without private auth credentials.",
+      });
       setShowImportModal(false);
     } finally {
       setImporting(false);
@@ -429,6 +440,13 @@ export default function Home() {
             >
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
               <span>Audit Reports</span>
+            </button>
+            <button
+              onClick={() => setShowNeuralLinkModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-300 hover:text-purple-200 bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/50 transition"
+            >
+              <Cpu className="w-3.5 h-3.5 text-purple-400" />
+              <span>Neural Link</span>
             </button>
           </div>
 
@@ -559,6 +577,14 @@ export default function Home() {
               >
                 <FileText className="w-4 h-4 text-cyan-400" />
                 <span>View Sample Audit Report</span>
+              </button>
+
+              <button
+                onClick={() => setShowNeuralLinkModal(true)}
+                className="flex items-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-sm text-purple-300 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-md transition-all shadow-lg"
+              >
+                <Cpu className="w-4 h-4 text-purple-400" />
+                <span>Compile Neural Link</span>
               </button>
 
               {!currentUser && (
@@ -812,21 +838,32 @@ export default function Home() {
         <main className="relative z-10 flex-1 flex flex-col">
           {/* Subheader Studio Navigation Bar */}
           <div className="border-b border-slate-800/80 bg-[#090d18]/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab("holographic")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
+                  activeTab === "holographic"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Holographic 3D Digital Twin</span>
+              </button>
               <button
                 onClick={() => setActiveTab("graph")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
                   activeTab === "graph"
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
                 <Network className="w-3.5 h-3.5" />
-                <span>Architecture Graph</span>
+                <span>2D Architecture Graph</span>
               </button>
               <button
                 onClick={() => setActiveTab("symbols")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
                   activeTab === "symbols"
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                     : "text-slate-400 hover:text-white"
@@ -837,7 +874,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setActiveTab("ai")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
                   activeTab === "ai"
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                     : "text-slate-400 hover:text-white"
@@ -848,7 +885,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setActiveTab("sandbox")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${
                   activeTab === "sandbox"
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                     : "text-slate-400 hover:text-white"
@@ -859,7 +896,14 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowNeuralLinkModal(true)}
+                className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-purple-300 bg-purple-950/40 border border-purple-500/30 hover:bg-purple-900/50 transition"
+              >
+                <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                <span>Neural Link Context</span>
+              </button>
               <button
                 onClick={() => setShowReportModal(true)}
                 className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-cyan-300 bg-cyan-950/40 border border-cyan-500/30 hover:bg-cyan-900/50 transition"
@@ -869,6 +913,18 @@ export default function Home() {
               </button>
             </div>
           </div>
+
+          {/* Studio Tab 0: Holographic 3D Digital Twin */}
+          {activeTab === "holographic" && (
+            <HolographicExplorer
+              repoId={activeRepo.id}
+              repoName={activeRepo.name}
+              onOpenFile={(path) => {
+                setActiveTab("symbols");
+                setSymbolQuery(path);
+              }}
+            />
+          )}
 
           {/* Studio Tab 1: Architecture Graph */}
           {activeTab === "graph" && (
@@ -1172,6 +1228,21 @@ export default function Home() {
         onClose={() => setShowReportModal(false)}
         repoId={activeRepo.id}
         repoName={activeRepo.name}
+      />
+
+      {/* Neural Link: AI Agent Context Center Modal */}
+      <NeuralLinkModal
+        isOpen={showNeuralLinkModal}
+        onClose={() => setShowNeuralLinkModal(false)}
+        repoId={activeRepo.id}
+        repoName={activeRepo.name}
+      />
+
+      {/* Detailed Diagnostic Error Banner */}
+      <ErrorDiagnosticBanner
+        error={diagnosticError}
+        onDismiss={() => setDiagnosticError(null)}
+        onRetry={() => window.location.reload()}
       />
 
       {/* Import Repository Modal */}

@@ -178,7 +178,43 @@ Repository
       └── file_id, content, symbols
 ```
 
-## 5. Security Architecture
+## 5. Holographic Visualization & Neural Link Architecture
+
+### Holographic Codebase Explorer Pipeline
+```
+Indexed AST & Symbol Graph (NetworkX)
+  ├── 1. Category Classification (api_route, data_model, core_logic, worker, test)
+  ├── 2. Multi-Cluster Spherical Projection (Golden-ratio Fibonacci sphere layout in 3D)
+  ├── 3. Edge Evidence Mapping (import, calls, inherits with confidence weight)
+  └── 4. Live Change Impact Reachability (Upstream blast radius & downstream dependency tracing)
+```
+- **Spatial Topology**: Nodes are placed into 3D orbital space based on architectural role clusters (`(x, y, z)` coordinates normalized between `-120` and `+120`).
+- **Interactive Digital Twin**: Rendered via an optimized native HTML5 3D projection engine with camera orbit, pan, pitch/yaw, and zoom controls.
+- **Blast Radius Analysis**: Traces both downstream dependencies (what breaks if this node changes) and upstream callers (what depends on this node) with risk scoring (`Low`, `Medium`, `High`, `Critical`).
+- **2D Fallback**: Automatic detection and one-click toggle to a high-contrast 2D dependency layout for accessibility or reduced-motion environments.
+
+### Neural Link: Persistent Project Context & Compiler
+```
+Repository Index + Architectural Summaries
+  ├── 1. Content Fingerprinting (SHA-256 hash of repository state)
+  ├── 2. Persistent Memory (PostgreSQL / R2 storage of architecture, decisions, test status)
+  ├── 3. Token-Aware Context Compiler:
+  │      ├── Input: User task / bug description + Token budget (2K to 64K tokens)
+  │      ├── Target Agent: Cursor, Windsurf, Claude Code, Antigravity, Codex
+  │      └── Output: Grounded system instructions + verified AST symbols + test instructions
+  └── 4. Multi-Agent Export Center (One-click AGENTS.md, Markdown dossier, or structured JSON)
+```
+- **Context Freshness**: Invalidation occurs automatically when repository file hashes or commit fingerprints drift from indexed memory.
+- **Strict Budget Packing**: Allocates 20% to identity & architecture, 40% to task-relevant symbols, 25% to file paths & decisions, and 15% to test/build instructions.
+
+## 6. Authentication & Tenant Data Isolation
+
+- **Password Hashing**: PBKDF2-HMAC-SHA256 with 100,000 iterations and a cryptographically secure 16-byte random salt.
+- **Session Tokens**: URL-safe HMAC-SHA256 signed JWT tokens with 7-day expiration.
+- **Data Isolation**: All `Repository` records link to `user_id`. Authenticated sessions can only query and mutate their own repositories. Unauthenticated visitors are supported gracefully in Guest Demo Mode.
+- **Institutional Audit Reports**: Generates formal repository health ratings (0-100 scale, letter grades A+ to D), severity-ranked security vulnerability indicators, and exportable reports in HTML (print/PDF-ready), GitHub Markdown, and raw JSON.
+
+## 7. Security Architecture
 
 ### Threat Model Summary
 
@@ -192,7 +228,7 @@ Repository
 | Prompt injection          | Repo content is untrusted data; system prompt isolation       |
 | Arbitrary code execution  | No repo code execution outside approved sandbox               |
 | AI tool-call injection    | Validate all AI-generated arguments; allowlist commands       |
-| Cross-repo data leakage   | Scope all queries to the active repository ID                 |
+| Cross-tenant data leakage | Tenant isolation via `user_id` foreign key & session scoping |
 | Secret exposure in UI     | API keys server-side only; never sent to browser              |
 
 ### Credential Handling
@@ -201,7 +237,7 @@ Repository
 - `.env.example` files contain placeholder keys, never real values.
 - `.gitignore` excludes `.env`, `*.sqlite`, and workspace data.
 
-## 6. Deployment & Cloud Infrastructure
+## 8. Deployment & Cloud Infrastructure
 
 BlackBox supports both a zero-dependency local development workflow and a resilient serverless cloud production deployment:
 
@@ -223,10 +259,11 @@ cd backend && python -m app.worker  # Optional if Upstash Redis is active
 cd frontend && npm run dev          # Next.js UI on port 3000
 ```
 
-## 7. Cross-Cutting Concerns
+## 9. Cross-Cutting Concerns
 
 - **Logging**: Structured JSON logging via Python `structlog` with ISO timestamps.
-- **Error handling**: All API errors return structured JSON `{ "error": { "code": ..., "message": ... } }`.
+- **Smart Error Diagnostics**: Client-side `ErrorDiagnosticBanner` provides explicit error codes, root cause categorization, actionable troubleshooting tips, expandable raw HTTP details, and direct retry triggers.
 - **Health & Readiness**: `GET /api/health` returns status of Neon PostgreSQL, Cloudflare R2, Upstash Redis, Nebius AI, and Docker Sandbox. `GET /api/ready` validates live database connectivity.
 - **CORS**: Configured with strict origins (`ALLOWED_ORIGINS`).
 - **Security Boundaries**: Shell metacharacter prevention, credential sanitization in sandbox runs, and path traversal guards.
+

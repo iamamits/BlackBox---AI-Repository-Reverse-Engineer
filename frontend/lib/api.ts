@@ -430,3 +430,150 @@ export async function fetchReport(repoId: number): Promise<RepoAuditReport> {
 export function getReportDownloadUrl(repoId: number, format: "html" | "markdown" | "json" = "html"): string {
   return `${API_BASE}/api/v1/reports/${repoId}/download?format=${format}`;
 }
+
+// ── Holographic Visualization Types & Calls ──────────────────────────────────
+
+export interface HolographicNode3D {
+  id: string;
+  file_id: number;
+  label: string;
+  path: string;
+  language: string;
+  category: "api_route" | "data_model" | "core_logic" | "worker" | "test";
+  cluster: string;
+  symbol_count: number;
+  size_bytes: number;
+  lines: number;
+  position: { x: number; y: number; z: number };
+}
+
+export interface HolographicEdge3D {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  confidence: string;
+  evidence?: string | null;
+}
+
+export interface HolographicTopology {
+  repository_id: number;
+  repository_name: string;
+  primary_language?: string | null;
+  clusters: Array<{ name: string; count: number }>;
+  node_count: number;
+  edge_count: number;
+  nodes: HolographicNode3D[];
+  edges: HolographicEdge3D[];
+}
+
+export interface ChangeImpactResult {
+  repository_id: number;
+  target_file: string;
+  risk_level: "low" | "medium" | "high" | "critical";
+  impact_score: number;
+  upstream_dependents_count: number;
+  downstream_dependencies_count: number;
+  upstream_dependents: Array<{ id: number; path: string; language: string }>;
+  downstream_dependencies: Array<{ id: number; path: string; language: string }>;
+  recommended_test_files: string[];
+}
+
+export async function fetchTopology(repoId: number, maxNodes: number = 150): Promise<HolographicTopology> {
+  const res = await fetch(`${API_BASE}/api/v1/visualization/${repoId}/topology?max_nodes=${maxNodes}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load holographic topology for repository #${repoId}`);
+  }
+  return await res.json();
+}
+
+export async function fetchChangeImpact(repoId: number, filePath: string): Promise<ChangeImpactResult> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/visualization/${repoId}/impact?file_path=${encodeURIComponent(filePath)}`,
+    {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to analyze impact for file '${filePath}'`);
+  }
+  return await res.json();
+}
+
+// ── Neural Link Context Types & Calls ────────────────────────────────────────
+
+export interface ProjectMemoryResponse {
+  repository_id: number;
+  repository_name: string;
+  version: number;
+  content_fingerprint: string;
+  is_fresh: boolean;
+  is_verified: boolean;
+  updated_at: string;
+  sections: {
+    identity?: string | null;
+    architecture?: string | null;
+    conventions?: string | null;
+    decisions?: string | null;
+    constraints?: string | null;
+    limitations?: string | null;
+    test_instructions?: string | null;
+    task_continuity?: string | null;
+  };
+}
+
+export interface ContextCompileResponse {
+  id: number;
+  repository_id: number;
+  format: string;
+  target_agent: string;
+  token_budget: number;
+  estimated_tokens: number;
+  within_budget: boolean;
+  content: string;
+}
+
+export async function fetchProjectMemory(repoId: number): Promise<ProjectMemoryResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/neural-link/${repoId}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load project memory for repository #${repoId}`);
+  }
+  return await res.json();
+}
+
+export async function compileContextPack(
+  repoId: number,
+  payload: {
+    task_description: string;
+    token_budget?: number;
+    format?: string;
+    target_agent?: string;
+    relevant_files?: string[];
+  }
+): Promise<ContextCompileResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/neural-link/${repoId}/compile`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Context compilation failed" }));
+    throw new Error(err.detail || "Context compilation failed");
+  }
+  return await res.json();
+}
+
+export function getNeuralLinkExportUrl(
+  repoId: number,
+  format: "agents_md" | "markdown" | "json" = "agents_md"
+): string {
+  return `${API_BASE}/api/v1/neural-link/${repoId}/export?format=${format}`;
+}
+

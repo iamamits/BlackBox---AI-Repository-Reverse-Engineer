@@ -160,6 +160,9 @@ class Repository(Base):
     investigations: Mapped[list["Investigation"]] = relationship(
         "Investigation", back_populates="repository", cascade="all, delete-orphan"
     )
+    memories: Mapped[list["ProjectMemory"]] = relationship(
+        "ProjectMemory", back_populates="repository", cascade="all, delete-orphan"
+    )
 
 
 class IndexedFile(Base):
@@ -340,3 +343,69 @@ class TestRun(Base):
 
     # Relationships
     patch: Mapped[Optional[Patch]] = relationship("Patch", back_populates="test_runs")
+
+
+# ── Neural Link & Project Memory ──────────────────────────────────────────
+
+
+class ProjectMemory(Base):
+    """Neural Link — Persistent, versioned project context memory."""
+
+    __tablename__ = "project_memories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    repository_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    commit_hash: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+
+    # Structured Context Sections
+    project_identity: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    architecture_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    conventions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    decisions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    constraints: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    limitations: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    test_instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    task_continuity: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    repository: Mapped["Repository"] = relationship("Repository", back_populates="memories")
+    context_packs: Mapped[list["ContextPack"]] = relationship(
+        "ContextPack", back_populates="memory", cascade="all, delete-orphan"
+    )
+
+
+class ContextPack(Base):
+    """A token-budgeted, compiled context pack for coding agents."""
+
+    __tablename__ = "context_packs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    memory_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("project_memories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    format: Mapped[str] = mapped_column(String(50), default="markdown")
+    target_agent: Mapped[str] = mapped_column(String(50), default="generic")
+    token_budget: Mapped[int] = mapped_column(Integer, default=8000)
+    estimated_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relationships
+    memory: Mapped[ProjectMemory] = relationship("ProjectMemory", back_populates="context_packs")
+

@@ -107,13 +107,35 @@ An individual developer (or small team) who:
 | CI-06 | Distinguish confirmed from estimated dependencies                      | P1       |
 | CI-07 | Produce regression-testing checklist                                   | P1       |
 
-### H. Investigation History
+### I. Holographic Codebase Explorer (Part A)
 
-| ID    | Requirement                                                            | Priority |
-|-------|------------------------------------------------------------------------|----------|
-| IH-01 | Persist repo version, question, evidence, findings, patches, outcomes  | P0       |
-| IH-02 | Searchable history                                                     | P1       |
-| IH-03 | Reproducible reports                                                   | P2       |
+| ID    | Requirement                                                                    | Priority |
+|-------|--------------------------------------------------------------------------------|----------|
+| HX-01 | 3D multi-cluster spherical topology based on real AST definitions & calls      | P0       |
+| HX-02 | Categorization tags (`api_route`, `data_model`, `core_logic`, `worker`, `test`)| P0       |
+| HX-03 | Interactive 3D orbital controls (rotate, pan, zoom, reset)                      | P0       |
+| HX-04 | Node selection inspector showing file path, symbol kind, and dependencies       | P0       |
+| HX-05 | Live blast-radius reachability analysis (upstream callers + downstream impacts)| P0       |
+| HX-06 | 2D high-contrast fallback toggle for accessibility and reduced motion           | P1       |
+
+### J. Neural Link & Context Compiler (Part B)
+
+| ID    | Requirement                                                                    | Priority |
+|-------|--------------------------------------------------------------------------------|----------|
+| NL-01 | Persistent project memory with content-fingerprinted SHA-256 freshness tracking | P0       |
+| NL-02 | Token-aware context compiler targeting Cursor, Windsurf, Claude Code, etc.     | P0       |
+| NL-03 | Dynamic token budget configuration (2K - 64K tokens) with live token estimation| P0       |
+| NL-04 | Context Export Center: One-click export of `AGENTS.md`, Markdown, or JSON      | P0       |
+| NL-05 | Stale context detection when source files drift from indexed state              | P1       |
+
+### K. Institutional Audit Reports & User Tenant Isolation
+
+| ID    | Requirement                                                                    | Priority |
+|-------|--------------------------------------------------------------------------------|----------|
+| AR-01 | Institutional code health score (0-100) and letter grades (A+ to D)            | P0       |
+| AR-02 | Multi-format report export (Print/PDF HTML, Markdown, raw JSON)                | P0       |
+| AR-03 | User registration, login, and tenant repository isolation via JWT sessions     | P0       |
+| AR-04 | Smart error diagnostic banner with root cause categorization and retry handler | P0       |
 
 ## 4. Non-Functional Requirements
 
@@ -135,25 +157,23 @@ An individual developer (or small team) who:
 - Deterministic features must work without AI credentials.
 - Document exactly how NVIDIA model + Nebius satisfy hackathon rules.
 
-## 6. Acceptance Criteria (MVP)
+## 6. Acceptance Criteria (Complete Platform)
 
-1. Start the app from documented instructions.
-2. Import a sample repository.
-3. See real indexing progress and extracted symbols.
-4. Search for a function → navigate to source.
-5. Inspect a dependency graph from parsed relationships.
-6. Ask a question → receive repository-grounded AI answer (Nebius/NVIDIA).
-7. Review a proposed code patch (unified diff).
-8. Execute tests in isolated sandbox or see clear explanation of why disabled.
-9. Inspect genuine logs and test outcomes.
-10. Reproduce demo using documented setup.
+1. Start the app from documented instructions or Docker Compose.
+2. Register an account or use instant 1-Click Guest Demo mode.
+3. Import a repository (local folder, ZIP, or public Git URL).
+4. See real indexing progress and extracted AST symbols.
+5. Explore the interactive 3D Holographic digital twin with orbital rotation and 2D fallback.
+6. Click any node to inspect source location and run live blast-radius change impact analysis.
+7. Ask an investigation question and receive repository-grounded AI answers (Nebius/NVIDIA).
+8. Review proposed code patches with unified diffs and execute sandboxed tests.
+9. Generate and download institutional code audit reports (HTML, Markdown, JSON).
+10. Open Neural Link, compile task-specific context within custom token budgets, and export `AGENTS.md` for AI coding agents.
+11. Encountered errors display detailed root cause diagnostics and actionable recovery suggestions.
 
-## 7. Out of Scope (MVP)
+## 7. Out of Scope
 
-- Multi-user authentication and RBAC
-- Real-time collaborative editing
-- Kubernetes deployment
-- Microservices decomposition
+- Real-time collaborative multi-cursor editing
 - Support for >10 programming languages
-- CI/CD pipeline integration
-- Production PostgreSQL migration (clean path documented, not required for MVP)
+- Production Kubernetes cluster provisioning (Docker Compose provided)
+
