@@ -56,7 +56,7 @@ async def enqueue_job(
                 job_id=job.job_id,
                 error=str(queue_err),
             )
-            return job.job_id
+            return ""
     else:
         log.info("Redis not configured; task dispatched for in-process execution", job_id=job.job_id, job_type=job_type)
         return job.job_id

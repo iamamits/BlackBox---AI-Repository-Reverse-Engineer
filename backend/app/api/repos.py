@@ -26,10 +26,17 @@ router = APIRouter(prefix="/repos", tags=["repositories"])
 async def _start_indexing(repo_id: int) -> None:
     """Run full repository scanning, symbol extraction, and indexing via Upstash Redis or local task."""
     settings = get_settings()
+    enqueued = False
     if settings.redis_enabled:
-        from app.queue.jobs import enqueue_job
-        await enqueue_job("index_repository", {"repo_id": repo_id})
-    else:
+        try:
+            from app.queue.jobs import enqueue_job
+            job_id = await enqueue_job("index_repository", {"repo_id": repo_id})
+            if job_id:
+                enqueued = True
+        except Exception:
+            enqueued = False
+
+    if not enqueued:
         from app.indexing.service import index_repository
         await index_repository(repo_id)
 

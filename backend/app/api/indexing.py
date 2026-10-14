@@ -1,7 +1,7 @@
 """BlackBox — Indexing status API router."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,3 +82,28 @@ async def cancel_indexing(
         repo.error_message = "Indexing cancelled by user"
 
     return {"message": "Cancellation requested", "repository_id": repo_id}
+
+
+@router.post(
+    "/{repo_id}/reindex",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger full re-indexing for a repository",
+)
+async def reindex_repository(
+    repo_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await db.execute(select(Repository).where(Repository.id == repo_id))
+    repo = result.scalar_one_or_none()
+    if not repo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+
+    repo.status = RepoStatus.PENDING
+    repo.error_message = None
+    await db.flush()
+
+    from app.api.repos import _start_indexing
+    background_tasks.add_task(_start_indexing, repo_id)
+    return {"message": "Reindexing triggered", "repository_id": repo_id}
+

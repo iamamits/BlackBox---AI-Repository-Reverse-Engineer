@@ -56,15 +56,24 @@ async def create_investigation(
         )
     else:
         investigation.status = InvestigationStatus.PENDING
-        if settings.redis_enabled:
-            from app.queue.jobs import enqueue_job
-            background_tasks.add_task(
-                enqueue_job, "run_investigation", {"investigation_id": investigation.id}
-            )
-        else:
-            background_tasks.add_task(_run_investigation, investigation.id)
+        background_tasks.add_task(_dispatch_investigation, investigation.id)
 
     return InvestigationRead.model_validate(investigation)
+
+
+async def _dispatch_investigation(investigation_id: int) -> None:
+    settings = get_settings()
+    enqueued = False
+    if settings.redis_enabled:
+        try:
+            from app.queue.jobs import enqueue_job
+            job_id = await enqueue_job("run_investigation", {"investigation_id": investigation_id})
+            if job_id:
+                enqueued = True
+        except Exception:
+            enqueued = False
+    if not enqueued:
+        await _run_investigation(investigation_id)
 
 
 @router.get(
