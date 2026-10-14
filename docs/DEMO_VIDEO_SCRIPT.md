@@ -1,80 +1,67 @@
-# 🎙️ BlackBox — 3-Minute Hackathon Demo Script (Teleprompter Edition)
+# 🎙️ BlackBox — 2:40 Hackathon Demo Script (Fast & Tight Teleprompter)
 
-> **Instructions for Recording:**
-> - Keep this file open on your phone in large font.
-> - Browser open on your computer at `http://localhost:3000`.
-> - Speak at a steady, confident pace.
-> - Follow the `[SCREEN ACTION]` cues before speaking each part.
+> **🎯 Target Duration: 2 Minutes 30 Seconds** (Hard limit: 3:00)  
+> **Total Word Count: ~320 words** (Speaks smoothly at ~130 WPM)  
+> **Rule:** Keep moving. Don't linger on any tab for more than 35 seconds.
 
 ---
 
-## ⏱️ PART 1: The Problem & The Solution (0:00 - 0:35)
+## ⏱️ PART 1: The Problem & Solution (0:00 - 0:25) • [50 words]
 
-**[SCREEN ACTION: Start on Landing Page http://localhost:3000 • Slowly scroll past the 3D particle canvas]**
+**[SCREEN: Start on Landing Page http://localhost:3000 • Scroll down once to show 3D particle canvas]**
 
-"Hi everyone!
+"Hi everyone! Unfamiliar codebases take days to understand. Worse, AI coding assistants have severe context amnesia — losing architectural details every time you switch tasks.
 
-Landing on a massive, unfamiliar, or legacy codebase is one of the most frustrating experiences in software engineering.
-
-Even worse, today's AI coding assistants suffer from severe context amnesia. Every time you switch tools or start a new task, you lose critical architectural context.
-
-This is why we built **BlackBox** — an autonomous AI repository reverse-engineering platform that translates complex codebases into 3D holographic digital twins, and compiles zero-loss neural memory for AI coding agents."
+We built **BlackBox** — an autonomous AI reverse-engineering platform that translates codebases into 3D holographic digital twins, and compiles zero-loss neural memory for AI coding agents."
 
 ---
 
-## ⏱️ PART 2: Repository Ingestion & 3D Holographic Twin (0:35 - 1:20)
+## ⏱️ PART 2: 3D Holographic Twin & Risk Engine (0:25 - 1:05) • [75 words]
 
-**[SCREEN ACTION: Click 'Studio Workspace' in header • Show active repo 'Ai-Job-Hunt' & '@amitkumar' user badge • Rotate the 3D sphere with mouse • Hover over a node to show risk score]**
+**[SCREEN: Click 'Studio Workspace' in header • Show repo 'Ai-Job-Hunt' • Rotate 3D sphere • Hover over a node]**
 
-"Here in the Studio Workspace, we ingest any public Git repository or local codebase in seconds. Let's look at our live indexed repository, `Ai-Job-Hunt`.
+"In the Studio Workspace, we ingest any Git repo in seconds. Here is our live indexed repository, `Ai-Job-Hunt`.
 
-BlackBox immediately parses the entire codebase using multi-language AST static analysis.
-
-Here is the **Holographic 3D Digital Twin**. You can see thirty source files grouped into modular clusters. Each node represents a file, and hovering over it instantly calculates the live change impact reachability and blast radius before writing any code."
+BlackBox parses all files using multi-language AST static analysis. This is our **Holographic 3D Digital Twin** — 30 files organized into spherical clusters. Hovering over any file calculates its live blast radius and change impact score, warning developers of critical risks before touching code."
 
 ---
 
-## ⏱️ PART 3: 2D Architecture Graph & AST Symbol Explorer (1:20 - 1:55)
+## ⏱️ PART 3: 2D Graph & AST Symbol Explorer (1:05 - 1:40) • [65 words]
 
-**[SCREEN ACTION: Click '2D Architecture Graph' tab • Drag a couple of nodes to show physics • Click 'AST Symbol Explorer' tab • Highlight functions like batchEvaluateJobs]**
+**[SCREEN: Click '2D Architecture Graph' tab • Drag 1 node • Click 'AST Symbol Explorer' tab • Click a function]**
 
-"Next, switching to the **2D Architecture Graph**, powered by NetworkX, we can visually trace full import hierarchies, inter-file dependencies, and call cycles.
+"Switching to the **2D Architecture Graph**, powered by NetworkX, we can visually trace full import hierarchies and call cycles.
 
-In the **AST Symbol Explorer**, BlackBox extracts every class, function, docstring, and signature with line-accurate precision across Python and TypeScript, allowing instant code navigation."
-
----
-
-## ⏱️ PART 4: AI Investigation with NVIDIA Open Models (1:55 - 2:25)
-
-**[SCREEN ACTION: Click 'AI Investigation Studio' tab • Point to model name nvidia/Nemotron-3-Ultra-550b-a55b • Scroll down to structured findings and unified diff patch]**
-
-"Now for autonomous intelligence:
-
-In our **AI Investigation Studio**, we leverage state-of-the-art **NVIDIA open models on Nebius Token Factory**, including Nemotron-3 Ultra 550B and Llama 3.1.
-
-The model doesn't just guess — it reasons strictly over grounded AST symbols and dependency evidence, producing structured findings, severity ratings, and automated unified diff patches ready for review."
+In the **AST Symbol Explorer**, BlackBox extracts functions, classes, signatures, and docstrings with line-accurate precision across Python and TypeScript, giving developers instant structural clarity."
 
 ---
 
-## ⏱️ PART 5: Institutional Audit Reports & Neural Link (2:25 - 3:00)
+## ⏱️ PART 4: AI Studio powered by NVIDIA Open Models (1:40 - 2:15) • [75 words]
 
-**[SCREEN ACTION: Click 'Audit Reports' in header • Show Health Score: 98/100, Grade A+ • Press ESC • Click 'Neural Link' in header • Show the AGENTS.md preview]**
+**[SCREEN: Click 'AI Investigation Studio' tab • Point to 'nvidia/Nemotron-3-Ultra-550b-a55b' • Scroll down to findings and diff]**
 
-"Finally, BlackBox delivers two killer enterprise capabilities:
+"For autonomous debugging, our **AI Investigation Studio** uses premier **NVIDIA open models on Nebius Token Factory**, including Nemotron-3 Ultra 550B and Llama 3.1.
 
-First, **Institutional Audit Reports** — a single-click codebase health score of 98 out of 100, Grade A-plus, with downloadable HTML and JSON reports.
-
-Second, the **Neural Link Context Engine** — which synthesizes deterministic SHA-256 fingerprinted project memory, and exports standardized `AGENTS.md` context packs tailored for Cursor, Windsurf, Claude Code, and Antigravity to eliminate agent context loss forever.
-
-Backed by twenty-nine passing unit tests and cloud resilience on Neon, Cloudflare R2, and Upstash, BlackBox is ready for enterprise deployment.
-
-Thank you!"
+Grounded strictly in AST symbols and dependency evidence, the AI analyzes the architecture, identifies root causes, and generates structured unified diff patches ready for review."
 
 ---
 
-### 💡 Pronunciation Guide (Tricky Words)
+## ⏱️ PART 5: Audit Reports & Neural Link (2:15 - 2:40) • [60 words]
+
+**[SCREEN: Click 'Audit Reports' in header (show 98/100) • Press ESC • Click 'Neural Link' (show AGENTS.md) • Close]**
+
+"Finally, two enterprise capabilities:
+
+First, **Audit Reports** — delivering a 98 out of 100 health score with downloadable HTML reports.
+
+Second, the **Neural Link Context Engine** — compiling deterministic `AGENTS.md` context packs tailored for Cursor, Windsurf, Claude Code, and Antigravity.
+
+Backed by 29 passing tests, BlackBox is ready. Thank you!"
+
+---
+
+### 💡 Quick Pronunciation
 * **Nebius**: *NEB-ee-us*
 * **Nemotron**: *NEM-oh-tron*
-* **AST**: *A-S-T* (say the letters)
-* **SHA-256**: *Shah two-fifty-six*
-* **NetworkX**: *Network-Ex*
+* **AST**: *A-S-T*
+
