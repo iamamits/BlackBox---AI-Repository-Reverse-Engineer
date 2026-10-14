@@ -184,7 +184,7 @@ export default function Home() {
     version: "0.1.0",
     database: "Neon PostgreSQL (connected)",
     ai_provider: "nebius (ready)",
-    ai_model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    ai_model: "nvidia/Nemotron-3-Ultra-550b-a55b",
     workspace_root: "./workspace_data"
   });
 
@@ -213,7 +213,7 @@ export default function Home() {
           snippet: "target = (workspace_root / relative_path).resolve()\nif not str(target).startswith(str(workspace_root)):\n    raise SecurityException('Path traversal detected')"
         }
       ],
-      model_used: "meta-llama/Meta-Llama-3.1-70B-Instruct (NVIDIA / Nebius)",
+      model_used: "nvidia/Nemotron-3-Ultra-550b-a55b (NVIDIA / Nebius)",
       created_at: "2026-10-14T12:05:00.000Z"
     }
   ]);
@@ -245,7 +245,7 @@ export default function Home() {
 
   // AI Models & Connection Test State
   const [aiModels, setAiModels] = useState<AIModelItem[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>("meta-llama/Meta-Llama-3.1-70B-Instruct");
+  const [selectedModel, setSelectedModel] = useState<string>("nvidia/Nemotron-3-Ultra-550b-a55b");
   const [isTestingLLM, setIsTestingLLM] = useState<boolean>(false);
   const [llmTestResult, setLlmTestResult] = useState<TestLLMResponse | null>(null);
 

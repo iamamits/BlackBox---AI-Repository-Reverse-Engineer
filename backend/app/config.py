@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     # Nebius / NVIDIA Inference
     nebius_api_key: str = ""
     nebius_base_url: str = "https://api.studio.nebius.ai/v1"
-    nebius_model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    nebius_model: str = "nvidia/Nemotron-3-Ultra-550b-a55b"
     nebius_max_retries: int = 3
     nebius_timeout_seconds: float = 60.0
 

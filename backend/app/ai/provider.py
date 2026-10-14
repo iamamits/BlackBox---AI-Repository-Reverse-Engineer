@@ -84,7 +84,9 @@ class NebiusAIProvider:
 
                 if resp.status_code == 200:
                     data = resp.json()
-                    reply = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    msg_obj = data.get("choices", [{}])[0].get("message", {})
+                    reply_raw = msg_obj.get("content") or msg_obj.get("reasoning") or ""
+                    reply = str(reply_raw).strip()
                     return {
                         "status": "connected",
                         "configured": True,
@@ -206,7 +208,8 @@ class NebiusAIProvider:
                             )
 
                         data = resp.json()
-                        raw_content = data["choices"][0]["message"]["content"]
+                        msg_payload = data["choices"][0]["message"]
+                        raw_content = msg_payload.get("content") or msg_payload.get("reasoning") or ""
                         cleaned = self._clean_json_content(raw_content)
 
                         try:

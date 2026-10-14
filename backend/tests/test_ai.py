@@ -36,7 +36,7 @@ def test_build_investigation_prompt():
 
 @pytest.mark.asyncio
 async def test_nebius_provider_mocked_success():
-    provider = NebiusAIProvider(api_key="mock-key-123", model="meta-llama/Meta-Llama-3.1-70B-Instruct")
+    provider = NebiusAIProvider(api_key="mock-key-123", model="nvidia/Nemotron-3-Ultra-550b-a55b")
     assert provider.is_configured
 
     mock_llm_json = {
