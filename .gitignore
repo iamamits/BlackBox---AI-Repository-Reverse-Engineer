@@ -11,17 +11,36 @@ build/
 .venv/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Node
 node_modules/
 .next/
 out/
 .turbo/
+coverage/
+*.tsbuildinfo
 
-# Environment
+# Environment & Secrets
 .env
+.env.*
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.development.example
+!**/.env.production.example
+!.env.example
+!.env.development.example
+!.env.production.example
 
 # Database
 *.sqlite
@@ -45,3 +64,39 @@ workspace_data/
 
 # OS
 desktop.ini
+
+# Local secrets and credentials
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local databases, backups and runtime files
+*.dump
+*.bak
+*.backup
+*.pid
+logs/
+tmp/
+temp/
+
+# Imported repositories and generated artifacts
+repository_cache/
+uploads/
+artifacts/
+test-results/
+playwright-report/
+
+# Build and tool caches
+.cache/
+.parcel-cache/
+.eslintcache/
+*.tsbuildinfo
+
+# Local Python environments and tooling
+.python-version.local
+
+# Environment template exceptions
+# Keep safe example files; never put real credentials in them

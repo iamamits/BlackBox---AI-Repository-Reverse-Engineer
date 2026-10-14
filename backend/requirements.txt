@@ -1,0 +1,46 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# Settings / validation
+# NOTE: pydantic>=2.11 pulls pydantic-core 2.50.1 which has Python 3.14 pre-built wheels
+pydantic>=2.11
+pydantic-settings>=2.9
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.0
+aiosqlite==0.20.0
+asyncpg>=0.30.0
+greenlet>=3.1.1
+
+# Object Storage (Cloudflare R2 S3-compatible)
+boto3>=1.35.0
+
+# Background Job Queue (Upstash Redis)
+redis>=5.2.0
+
+# Graph analysis
+networkx==3.4.2
+
+# HTTP client (for Nebius/NVIDIA)
+httpx==0.28.1
+
+# Logging
+structlog==24.4.0
+
+# Archiving / repo import
+gitpython==3.1.43
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
+
+# Dev tools
+# ruff  — install separately: pip install ruff
+
+# NOTE: tree-sitter requires Microsoft Visual C++ Build Tools on Windows.
+# It is NOT listed here. Install separately after installing MSVC:
+#   pip install tree-sitter==0.24.0
+# Until then, the indexing pipeline uses a pure-Python regex fallback.

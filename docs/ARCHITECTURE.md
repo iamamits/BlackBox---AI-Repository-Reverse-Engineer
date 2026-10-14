@@ -201,30 +201,32 @@ Repository
 - `.env.example` files contain placeholder keys, never real values.
 - `.gitignore` excludes `.env`, `*.sqlite`, and workspace data.
 
-## 6. Deployment (MVP)
+## 6. Deployment & Cloud Infrastructure
 
-For local development and demo:
+BlackBox supports both a zero-dependency local development workflow and a resilient serverless cloud production deployment:
 
-```
-docker-compose up       # Starts backend + frontend + SQLite
-```
+### Production Cloud Architecture
+- **Neon PostgreSQL**: Serverless relational database configured via `DATABASE_URL` with SQLAlchemy `asyncpg`, connection pooling (`pool_size=5`, `max_overflow=10`, `pool_pre_ping=True`), and Alembic migrations.
+- **Cloudflare R2**: Private S3-compatible durable object storage configured via `R2_*` environment variables for repository archives and investigation reports. Enforces strict payload limits (max 500MB) and rejects silent local fallbacks in production.
+- **Upstash Redis**: Serverless Redis task queue configured via `REDIS_URL` (`rediss://...` with TLS) powering a separately deployable worker process (`python -m app.worker`) with bounded retries and exponential backoff.
+- **Nebius Token Factory**: GPU inference endpoint hosting NVIDIA open models (`meta-llama/Meta-Llama-3.1-70B-Instruct`) with structured JSON schema validation.
 
-Or run separately:
+### Deployment Options
 
-```
-# Backend
+```bash
+# 1. Multi-Service Container Setup (API + Worker + Web UI)
+docker compose up --build
+
+# 2. Local Modular Monolith (FastAPI + Next.js)
 cd backend && uvicorn app.main:app --reload --port 8000
-
-# Frontend
-cd frontend && npm run dev    # port 3000
+cd backend && python -m app.worker  # Optional if Upstash Redis is active
+cd frontend && npm run dev          # Next.js UI on port 3000
 ```
-
-No Kubernetes, no microservices, no external databases required for MVP.
 
 ## 7. Cross-Cutting Concerns
 
-- **Logging**: Structured JSON logging via Python `structlog`.
-- **Error handling**: All API errors return `{ "error": { "code": ..., "message": ... } }`.
-- **Health check**: `GET /api/health` returns backend status + AI provider status.
-- **CORS**: Configured for local dev origins; restrictive in production.
-- **Pagination**: Cursor-based for lists; configurable page size.
+- **Logging**: Structured JSON logging via Python `structlog` with ISO timestamps.
+- **Error handling**: All API errors return structured JSON `{ "error": { "code": ..., "message": ... } }`.
+- **Health & Readiness**: `GET /api/health` returns status of Neon PostgreSQL, Cloudflare R2, Upstash Redis, Nebius AI, and Docker Sandbox. `GET /api/ready` validates live database connectivity.
+- **CORS**: Configured with strict origins (`ALLOWED_ORIGINS`).
+- **Security Boundaries**: Shell metacharacter prevention, credential sanitization in sandbox runs, and path traversal guards.

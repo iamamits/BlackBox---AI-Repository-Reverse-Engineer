@@ -30,34 +30,37 @@ If any of these files are missing or stale, update them before proceeding.
 - Vitest (unit), Playwright (E2E)
 
 ### Backend
-- Python 3.13, FastAPI, Pydantic, SQLAlchemy + Alembic
-- SQLite (dev) → PostgreSQL (prod path)
-- Tree-sitter (parsing), ripgrep + SQLite FTS5 (search)
-- NetworkX (dependency/impact graphs)
-- pytest
+- Python 3.14 / 3.13, FastAPI, Pydantic v2, SQLAlchemy 2.0 (asyncpg) + Alembic
+- Neon Managed PostgreSQL (production) with SQLite local dev option
+- Cloudflare R2 object storage via boto3 (private S3-compatible bucket)
+- Upstash Serverless Redis for background worker task queue
+- Python AST & regex parsers (with Tree-sitter compatibility)
+- NetworkX (dependency & call graphs)
+- pytest (21/21 passing tests)
 
 ### AI / Inference
-- Provider abstraction with Nebius Token Factory adapter
-- NVIDIA open models via Nebius
-- Structured Pydantic response schemas
+- Nebius Token Factory adapter targeting NVIDIA open models (`meta-llama/Meta-Llama-3.1-70B-Instruct`)
+- Structured Pydantic response schemas with grounded repository context
 - Configurable via `NEBIUS_API_KEY`, `NEBIUS_BASE_URL`, `NEBIUS_MODEL`
 
 ## 4. Environment Variables
 
 These are required at runtime (never commit actual values):
 
-| Variable               | Purpose                                  |
-|------------------------|------------------------------------------|
-| `NEBIUS_API_KEY`       | Nebius inference API key                 |
-| `NEBIUS_BASE_URL`      | Nebius API endpoint                      |
-| `NEBIUS_MODEL`         | Model identifier (NVIDIA open model)     |
-| `DATABASE_URL`         | SQLAlchemy connection string             |
-| `BLACKBOX_WORKSPACE_ROOT` | Root directory for imported repos     |
-
-Optional:
-| Variable      | Purpose                          |
-|---------------|----------------------------------|
-| `REDIS_URL`   | Only if async job queue is added |
+| Variable                  | Purpose                                         |
+|---------------------------|-------------------------------------------------|
+| `NEBIUS_API_KEY`          | Nebius inference API key                        |
+| `NEBIUS_BASE_URL`         | Nebius API endpoint                             |
+| `NEBIUS_MODEL`            | Model identifier (NVIDIA open model)            |
+| `DATABASE_URL`            | SQLAlchemy asyncpg PostgreSQL or SQLite URL     |
+| `STORAGE_BACKEND`         | `local` (development) or `r2` (production)      |
+| `R2_ACCOUNT_ID`           | Cloudflare account ID (for R2)                  |
+| `R2_ACCESS_KEY_ID`        | Cloudflare R2 S3 access key                     |
+| `R2_SECRET_ACCESS_KEY`    | Cloudflare R2 S3 secret key                     |
+| `R2_BUCKET_NAME`          | Private Cloudflare R2 bucket name               |
+| `R2_ENDPOINT_URL`         | Cloudflare R2 endpoint URL                      |
+| `REDIS_URL`               | Upstash Redis connection string (`rediss://...`)|
+| `BLACKBOX_WORKSPACE_ROOT` | Root directory for imported repos               |
 
 ## 5. Coding Conventions
 

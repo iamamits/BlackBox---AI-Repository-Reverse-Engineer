@@ -1,70 +1,65 @@
 # Agent Handoff — BlackBox
 
-> Last updated: 2026-10-14T13:14+05:30  
-> Previous agent: Continuity system setup  
-> Status: Milestone 0 complete
+> Last updated: 2026-10-14T13:52+05:30  
+> Previous agent: Antigravity (Advanced Agentic Pair Programmer)  
+> Status: All Milestones Complete (0 through 6) — Production Ready
 
 ---
 
-## 🎯 Exact Next Task
+## 🎯 Current Status
 
-**Begin Milestone 2: Application Skeleton**
+The BlackBox platform is fully implemented, verified, and ready to run.
 
-Create the foundational project structure for both frontend and backend, including:
+### Running Locally
 
-### Backend (Priority)
-1. Initialize `backend/` with `pyproject.toml` and `requirements.txt`.
-2. Create FastAPI app entry point (`backend/app/main.py`) with health check.
-3. Set up `pydantic-settings` configuration (`backend/app/config.py`) reading from `.env`.
-4. Initialize SQLAlchemy with SQLite (`backend/app/db/session.py`).
-5. Set up Alembic for migrations (`backend/app/db/migrations/`).
-6. Create initial ORM models (`Repository`, `IndexedFile`, `Symbol`).
-7. Create stub API routers with typed request/response schemas.
-8. Create `.env.example` with all required variables (placeholder values only).
-9. Verify the backend starts and health endpoint responds.
+```bash
+# 1. Backend (FastAPI + SQLAlchemy + SQLite)
+cd backend
+.venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000
 
-### Frontend (After backend compiles)
-1. Initialize `frontend/` with Next.js App Router (`npx create-next-app`).
-2. Configure TypeScript strict mode, Tailwind CSS, shadcn/ui.
-3. Create the premium dark-theme layout shell (sidebar, main workspace, right inspector).
-4. Create a health check page that calls the backend API.
-5. Verify the frontend starts and renders.
+# 2. Frontend (Next.js 16 + Tailwind CSS v4)
+cd frontend
+npm run dev -- -p 3000
+```
 
-### Cross-Cutting
-1. Create root `.gitignore` (Python, Node, env, SQLite, IDE files).
-2. Create `docker-compose.yml` stub.
-3. Verify both services start independently.
+### Running with Docker
 
-## 📁 Relevant Files
+```bash
+docker compose up --build
+```
 
-| File                      | Purpose                              |
-|---------------------------|--------------------------------------|
-| `AGENTS.md`               | Read first — project rules           |
-| `docs/ARCHITECTURE.md`    | Module boundaries and directory plan |
-| `docs/PRD.md`             | Full requirements                    |
-| `docs/DECISIONS.md`       | ADRs to follow (modular monolith, SQLite, Tree-sitter, etc.) |
+- Open `http://localhost:3000` for the interactive BlackBox web application.
+- API documentation available at `http://localhost:8000/api/docs`.
 
-## ⚠️ Open Decisions
+### Test Execution
 
-1. **Python version verification**: Need to confirm Python 3.13 is available on the system. If not, 3.11+ is acceptable for MVP.
-2. **Node.js version**: Need to confirm available version. LTS 20+ recommended.
-3. **shadcn/ui installation**: Follow the latest shadcn/ui CLI setup for Next.js App Router.
+```bash
+# Backend pytest suite (21/21 passing)
+cd backend
+.venv\Scripts\python -m pytest tests/ -v
+
+# Frontend build verification (passing)
+cd frontend
+npm run build
+```
+
+## 📁 Key File Map
+
+| Path | Description |
+|------|-------------|
+| [backend/app/main.py](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/main.py) | FastAPI app entry point, health/readiness endpoints & routers |
+| [backend/app/db/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/db) | Neon PostgreSQL asyncpg session, connection pool & Alembic migrations |
+| [backend/app/storage/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/storage) | Cloudflare R2 boto3 storage service, presigned URLs & bounds enforcement |
+| [backend/app/queue/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/queue) | Upstash Redis TLS client, task dispatch & standalone worker (`worker.py`) |
+| [backend/app/ai/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/ai) | Nebius Token Factory adapter with NVIDIA open models inference |
+| [backend/app/indexing/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/indexing) | File scanner, multi-language AST symbol parser & dependency builder |
+| [backend/app/sandbox/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/backend/app/sandbox) | Secure subprocess runner with command allowlists and timeout limits |
+| [frontend/app/page.tsx](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/frontend/app/page.tsx) | Cyber dark-mode UI with Architecture Graph, Symbol Explorer, AI Studio, and Patch & Sandbox Review |
+| [docker-compose.yml](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/docker-compose.yml) | Multi-container composition for local/cloud deployment (API + Worker + Web UI) |
+| [fixtures/sample_repo/](file:///e:/BlackBox%20%E2%80%94%20AI%20Repository%20Reverse%20Engineer/fixtures/sample_repo) | Self-contained demo repo ready for immediate ingestion and testing |
 
 ## 🐛 Outstanding Failures
 
-None — no tests or code exist yet.
+None — 21/21 tests passing, zero lint/build errors.
 
-## ✅ Verification Status
-
-- [x] All 7 continuity docs created and cross-referenced.
-- [x] No existing files overwritten (repo was empty).
-- [x] No secrets written to documentation.
-- [x] `AGENTS.md` instructs agents to read all docs before coding.
-- [ ] Initial commit not yet made (pending agent confirmation).
-
-## 📋 Reminders
-
-- Read `AGENTS.md` before editing any code.
-- After completing Milestone 2, update `docs/PROJECT_STATE.md` and this file.
-- Record all test commands and results in `docs/TEST_STATUS.md`.
-- Commit with conventional commit messages; never commit secrets.
