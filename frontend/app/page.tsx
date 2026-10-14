@@ -544,7 +544,7 @@ export default function Home() {
               <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
               <span>NVIDIA Open Models & Nebius Token Factory Integration</span>
               <span className="text-slate-500">•</span>
-              <span className="text-emerald-400 font-semibold">Hackathon Edition</span>
+              <span className="text-emerald-400 font-semibold">Enterprise Edition</span>
             </div>
 
             {/* Bold Headline */}
@@ -825,7 +825,7 @@ export default function Home() {
                 <span>BlackBox AI Repository Reverse Engineering</span>
               </div>
               <div>Nebius Token Factory • NVIDIA Open Models • Cloudflare R2 • Neon PostgreSQL</div>
-              <div className="text-slate-600">Built for the Nebius / NVIDIA Hackathon 2026</div>
+              <div className="text-slate-600">Enterprise AI Code Intelligence Platform</div>
             </div>
           </footer>
         </main>

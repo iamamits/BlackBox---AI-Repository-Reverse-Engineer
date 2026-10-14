@@ -374,10 +374,9 @@ A complete demo repository is bundled in [`fixtures/sample_repo`](fixtures/sampl
 
 ---
 
-## ⚖️ Hackathon Disclosure & Acknowledgments
+## ⚖️ Architecture & Acknowledgments
 
-- Developed for the **Nebius / NVIDIA Hackathon**.
-- **Model Inference**: Powered by NVIDIA Open Models (`meta-llama/Meta-Llama-3.1-70B-Instruct`) hosted on [Nebius Token Factory](https://studio.nebius.ai).
+- **Model Inference**: Powered by NVIDIA Open Models (`nvidia/Nemotron-3-Ultra-550b-a55b`) hosted on [Nebius Token Factory](https://studio.nebius.ai).
 - Built with **FastAPI**, **Next.js**, **Neon PostgreSQL**, **Cloudflare R2**, and **Upstash Redis**.
 - Authored with AI-assisted pair programming in Google DeepMind's Antigravity IDE.
 
