@@ -32,6 +32,35 @@ When developers encounter massive, undocumented, or legacy repositories, reverse
 
 ---
 
+## 📸 Platform Interface & Screenshots
+
+### 1. Interactive Architecture Dependency Graph
+> *Decompile any repository into an interactive dependency map showing file relationships, import chains, and AST symbol hierarchies in real time.*
+
+<div align="center">
+  <img src="docs/images/architecture_graph.jpg" alt="BlackBox Architecture Graph" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+</div>
+
+<br/>
+
+### 2. Autonomous AI Investigation Studio
+> *Deep codebase reasoning grounded in real AST symbols and call edges, powered by NVIDIA open models on Nebius Token Factory with structured confidence scoring.*
+
+<div align="center">
+  <img src="docs/images/ai_investigation.jpg" alt="AI Autonomous Investigation" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+</div>
+
+<br/>
+
+### 3. Monaco Unified Diff Review & Sandboxed Test Execution
+> *Side-by-side Monaco diff inspection with regression test execution inside an isolated security sandbox with strict command allowlists.*
+
+<div align="center">
+  <img src="docs/images/patch_review_sandbox.jpg" alt="Patch Review and Sandbox" width="95%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+</div>
+
+---
+
 ## 🏗️ Architecture & Cloud Infrastructure
 
 BlackBox uses a modular monolith design built for resilience, scalability, and security:
