@@ -59,8 +59,11 @@ async def process_job(job: JobPayload) -> bool:
                 # Exponential backoff retry
                 delay = 2 ** job.retries
                 log.info("Re-queueing job after backoff", job_id=job.job_id, retry=job.retries, delay_s=delay)
-                await asyncio.sleep(delay)
-                await client.lpush(get_settings().redis_queue_name, job.model_dump_json())
+                try:
+                    await asyncio.sleep(delay)
+                    await client.lpush(get_settings().redis_queue_name, job.model_dump_json())
+                except Exception as requeue_err:
+                    log.warning("Failed to requeue job to Redis", error=str(requeue_err))
         return False
 
 
@@ -70,7 +73,15 @@ async def run_worker():
     client = get_redis_client()
 
     if client is None:
-        log.error("Worker cannot start: REDIS_URL is not configured or disabled.")
+        log.info(
+            "Worker is idling: REDIS_URL is not configured. Background jobs are handled in-process by the backend API. "
+            "To enable the distributed queue worker, configure REDIS_URL in backend/.env."
+        )
+        try:
+            await _shutdown_event.wait()
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            pass
+        log.info("Worker gracefully stopped.")
         return
 
     queue_key = settings.redis_queue_name

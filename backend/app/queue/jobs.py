@@ -46,9 +46,17 @@ async def enqueue_job(
     if client is not None:
         queue_key = settings.redis_queue_name
         data = job.model_dump_json()
-        await client.lpush(queue_key, data)
-        log.info("Enqueued job to Upstash Redis", job_id=job.job_id, job_type=job_type, queue=queue_key)
-        return job.job_id
+        try:
+            await client.lpush(queue_key, data)
+            log.info("Enqueued job to Upstash Redis", job_id=job.job_id, job_type=job_type, queue=queue_key)
+            return job.job_id
+        except Exception as queue_err:
+            log.warning(
+                "Redis connection failed during enqueue; task falling back to in-process execution",
+                job_id=job.job_id,
+                error=str(queue_err),
+            )
+            return job.job_id
     else:
         log.info("Redis not configured; task dispatched for in-process execution", job_id=job.job_id, job_type=job_type)
         return job.job_id
