@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     Enum,
     Float,
@@ -91,12 +92,41 @@ class SandboxStatus(str, enum.Enum):
 # ── Models ────────────────────────────────────────────────────────────────
 
 
+class User(Base):
+    """A registered user for workspace data isolation and session history."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    repositories: Mapped[list["Repository"]] = relationship(
+        "Repository", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
 class Repository(Base):
     """An imported repository being analysed."""
 
     __tablename__ = "repositories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     source_type: Mapped[SourceType] = mapped_column(Enum(SourceType), nullable=False)
     source_path: Mapped[str] = mapped_column(Text, nullable=False)
@@ -120,6 +150,7 @@ class Repository(Base):
     )
 
     # Relationships
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="repositories")
     files: Mapped[list["IndexedFile"]] = relationship(
         "IndexedFile", back_populates="repository", cascade="all, delete-orphan"
     )

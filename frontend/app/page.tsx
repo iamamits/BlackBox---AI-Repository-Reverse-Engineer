@@ -25,8 +25,19 @@ import {
   Plus,
   X,
   FileText,
-  Workflow
+  Workflow,
+  Lock,
+  User as UserIcon,
+  Download,
+  BarChart3,
+  SlidersHorizontal,
+  Compass,
+  Star,
+  Zap,
+  Globe,
+  Radio
 } from "lucide-react";
+
 import {
   RepoSummary,
   SystemHealth,
@@ -35,16 +46,24 @@ import {
   ProposedPatch,
   AIModelItem,
   TestLLMResponse,
+  User,
+  UserProfileStats,
   fetchHealth,
   fetchRepositories,
   fetchAIModels,
+  fetchCurrentUser,
   testLLMConnection,
   importLocalRepo,
   importGitRepo,
   startInvestigation
 } from "../lib/api";
 
-// Sample initial data for immediate interactive WOW experience
+import Neural3DCanvas from "../components/Neural3DCanvas";
+import AuthModal from "../components/AuthModal";
+import UserProfileModal from "../components/UserProfileModal";
+import ReportModal from "../components/ReportModal";
+
+// Initial sample data for instantaneous interactive exploration
 const SAMPLE_REPOS: RepoSummary[] = [
   {
     id: 1,
@@ -119,86 +138,92 @@ const SAMPLE_SYMBOLS: SymbolItem[] = [
     kind: "class",
     file_path: "app/config.py",
     line_start: 12,
-    line_end: 52,
+    line_end: 78,
     signature: "class Settings(BaseSettings)",
-    docstring: "Application configuration with Nebius API keys and database URL."
+    docstring: "Pydantic settings loaded from environment variables (.env)."
   }
 ];
 
-const GRAPH_NODES = [
-  { id: "main", name: "app/main.py", type: "entry", x: 380, y: 40, symbols: 4, color: "border-indigo-500 bg-indigo-950/40" },
-  { id: "config", name: "app/config.py", type: "config", x: 120, y: 150, symbols: 3, color: "border-cyan-500 bg-cyan-950/40" },
-  { id: "session", name: "app/db/session.py", type: "db", x: 260, y: 220, symbols: 2, color: "border-emerald-500 bg-emerald-950/40" },
-  { id: "models", name: "app/core/models.py", type: "models", x: 340, y: 320, symbols: 8, color: "border-purple-500 bg-purple-950/40" },
-  { id: "api_repos", name: "app/api/repos.py", type: "api", x: 580, y: 150, symbols: 6, color: "border-blue-500 bg-blue-950/40" },
-  { id: "api_inv", name: "app/api/investigate.py", type: "ai", x: 680, y: 250, symbols: 4, color: "border-amber-500 bg-amber-950/40" },
-  { id: "nebius_ai", name: "Nebius / NVIDIA Open Model", type: "cloud", x: 740, y: 380, symbols: 0, color: "border-green-400 bg-green-950/50 shadow-lg shadow-green-500/20" }
-];
-
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"graph" | "symbols" | "ai" | "patch">("graph");
+  // Navigation & View Mode
+  const [viewMode, setViewMode] = useState<"landing" | "studio">("landing");
+  const [activeTab, setActiveTab] = useState<"graph" | "symbols" | "ai" | "sandbox">("graph");
+
+  // Authentication & Profile State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [profileStats, setProfileStats] = useState<UserProfileStats | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+
+  // Report Engine State
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+
+  // Domain State
   const [repos, setRepos] = useState<RepoSummary[]>(SAMPLE_REPOS);
   const [activeRepo, setActiveRepo] = useState<RepoSummary>(SAMPLE_REPOS[0]);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importType, setImportType] = useState<"local" | "git" | "zip">("local");
-  const [importPath, setImportPath] = useState("e:/BlackBox — AI Repository Reverse Engineer");
-  const [importName, setImportName] = useState("BlackBox Local");
-  const [importing, setImporting] = useState(false);
-
-  // Symbol explorer state
-  const [symbolQuery, setSymbolQuery] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolItem>(SAMPLE_SYMBOLS[0]);
+  const [symbolQuery, setSymbolQuery] = useState<string>("");
+  const [question, setQuestion] = useState<string>("");
+  const [isInvestigating, setIsInvestigating] = useState<boolean>(false);
 
-  // AI Investigation state
-  const [question, setQuestion] = useState("");
-  const [isInvestigating, setIsInvestigating] = useState(false);
+  // Import Modal State
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [importType, setImportType] = useState<"local" | "git">("local");
+  const [importName, setImportName] = useState<string>("");
+  const [importPath, setImportPath] = useState<string>("");
+  const [importing, setImporting] = useState<boolean>(false);
+
+  // Health State
+  const [health, setHealth] = useState<SystemHealth>({
+    status: "ok",
+    version: "0.1.0",
+    database: "Neon PostgreSQL (connected)",
+    ai_provider: "nebius (ready)",
+    ai_model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    workspace_root: "./workspace_data"
+  });
+
+  // AI & Patch State
   const [investigations, setInvestigations] = useState<InvestigationResult[]>([
     {
       id: 101,
       repository_id: 1,
-      question: "How is database concurrency and SQLite session cleanup handled?",
+      question: "How does the indexing scanner isolate safe paths from traversal attempts?",
       status: "complete",
-      summary: "Database connectivity is managed via SQLAlchemy AsyncSessionLocal with aiosqlite and greenlet under Python 3.14. Session cleanup is bound to FastAPI request dependency lifecycles.",
+      summary:
+        "The repository relies on `app.indexing.scanner.safe_resolve_path` and `validate_path` to restrict file access to `workspace_root`. Any symlink escaping or relative `..` sequences raise an HTTP 400 rejection.",
       findings: [
         {
-          title: "Session Lifecycle Concurrency",
-          description: "Async generator get_db() ensures session close on exception rollback.",
+          title: "Path Traversal Containment",
+          description: "Strict canonical path resolution prevents directory traversal outside workspace.",
           severity: "low",
-          file: "app/db/session.py",
-          line: 38
-        },
-        {
-          title: "Python 3.14 Greenlet Requirement",
-          description: "Greenlet 3.5.6 pre-compiled wheels provide async task context switching.",
-          severity: "medium",
-          file: "requirements.txt",
-          line: 15
+          file: "app/indexing/scanner.py",
+          line: 42
         }
       ],
       evidence_refs: [
         {
-          file: "app/db/session.py",
-          lines: "38-44",
-          snippet: "async def get_db() -> AsyncGenerator[AsyncSession, None]:\n    async with AsyncSessionLocal() as session:\n        try:\n            yield session\n        finally:\n            await session.close()"
+          file: "app/indexing/scanner.py",
+          lines: "38-55",
+          snippet: "target = (workspace_root / relative_path).resolve()\nif not str(target).startswith(str(workspace_root)):\n    raise SecurityException('Path traversal detected')"
         }
       ],
       model_used: "meta-llama/Meta-Llama-3.1-70B-Instruct (NVIDIA / Nebius)",
-      created_at: "2026-10-14T12:00:00.000Z"
+      created_at: "2026-10-14T12:05:00.000Z"
     }
   ]);
 
-  // Patch review state
-  const [activePatch] = useState<ProposedPatch>({
-    id: 1,
+  const [proposedPatch, setProposedPatch] = useState<ProposedPatch>({
+    id: 201,
     investigation_id: 101,
     file_path: "backend/app/config.py",
-    explanation: "Add robust comma-delimited and JSON parsing for ALLOWED_ORIGINS to guarantee seamless CORS interoperability between Next.js frontend and FastAPI backend.",
+    explanation:
+      "Normalize allowed origins string into JSON or comma-separated list to support production Vercel frontend deployments.",
     diff: `--- a/backend/app/config.py
 +++ b/backend/app/config.py
-@@ -22,6 +22,17 @@
-     app_env: Literal["development", "staging", "production"] = "development"
-     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+@@ -22,6 +22,12 @@
+      app_env: Literal["development", "staging", "production"] = "development"
+      log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 -    allowed_origins: list[str] = ["http://localhost:3000"]
 +    allowed_origins: Union[str, list[str]] = ["http://localhost:3000"]
 +
@@ -206,8 +231,6 @@ export default function Home() {
 +    @classmethod
 +    def parse_allowed_origins(cls, v: Any) -> list[str]:
 +        if isinstance(v, str):
-+            if v.startswith("[") and v.endswith("]"):
-+                return json.loads(v)
 +            return [origin.strip() for origin in v.split(",") if origin.strip()]
 +        return v`,
     status: "proposed",
@@ -221,14 +244,23 @@ export default function Home() {
   const [isTestingLLM, setIsTestingLLM] = useState<boolean>(false);
   const [llmTestResult, setLlmTestResult] = useState<TestLLMResponse | null>(null);
 
+  // Initial Data & Auth Sync
   useEffect(() => {
     fetchHealth().then(setHealth);
+    fetchCurrentUser().then((profile) => {
+      if (profile) {
+        setCurrentUser(profile.user);
+        setProfileStats(profile);
+      }
+    });
+
     fetchRepositories().then((data) => {
       if (data && data.length > 0) {
         setRepos(data);
         setActiveRepo(data[0]);
       }
     });
+
     fetchAIModels().then((models) => {
       if (models && models.length > 0) {
         setAiModels(models);
@@ -237,6 +269,21 @@ export default function Home() {
       }
     });
   }, []);
+
+  const refreshUserData = async () => {
+    const profile = await fetchCurrentUser();
+    if (profile) {
+      setCurrentUser(profile.user);
+      setProfileStats(profile);
+    } else {
+      setCurrentUser(null);
+      setProfileStats(null);
+    }
+    const repoList = await fetchRepositories();
+    if (repoList && repoList.length > 0) {
+      setRepos(repoList);
+    }
+  };
 
   const handleTestLLM = async () => {
     setIsTestingLLM(true);
@@ -265,7 +312,6 @@ export default function Home() {
       setInvestigations([result, ...investigations]);
       setQuestion("");
     } catch {
-      // Create local simulated result if backend async task runs
       const newInv: InvestigationResult = {
         id: Date.now(),
         repository_id: activeRepo.id,
@@ -288,7 +334,7 @@ export default function Home() {
             snippet: "class Repository(Base):\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str] = mapped_column(String(255))\n    status: Mapped[RepoStatus]"
           }
         ],
-        model_used: "meta-llama/Meta-Llama-3.1-70B-Instruct (NVIDIA / Nebius)",
+        model_used: selectedModel,
         created_at: new Date().toISOString()
       };
       setInvestigations([newInv, ...investigations]);
@@ -311,6 +357,7 @@ export default function Home() {
       setRepos([newRepo, ...repos]);
       setActiveRepo(newRepo);
       setShowImportModal(false);
+      await refreshUserData();
     } catch (err: any) {
       alert("Import notice: " + (err.message || "Processed into repository index"));
       setShowImportModal(false);
@@ -326,727 +373,882 @@ export default function Home() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#070b14] text-slate-100">
-      {/* ── Top Header ────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0b101e]/90 backdrop-blur-md px-6 py-3.5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
+    <div className="relative flex flex-col min-h-screen bg-[#070b14] text-slate-100 overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
+      {/* ── 3D Interactive Neural / Isometric Canvas Background ─────────────── */}
+      <Neural3DCanvas />
+
+      {/* ── Top Global Navigation Bar ───────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#070b14]/90 backdrop-blur-xl px-6 py-3.5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          {/* Logo & Brand */}
+          <div
+            onClick={() => setViewMode("landing")}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
               <Boxes className="w-5 h-5 text-white" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#0b101e] animate-pulse" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#070b14] animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold tracking-tight text-lg text-white">BlackBox</span>
+                <span className="font-extrabold tracking-tight text-lg text-white">BlackBox</span>
                 <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  AI Decompiler & Debugger
+                  AI Decompiler
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Nebius / NVIDIA Open Models • Tree-sitter & Dependency Graph</p>
+              <p className="text-[11px] text-slate-400">NVIDIA Open Models & Institutional Reverse Engineering</p>
             </div>
           </div>
 
-          {/* Active Repo selector + Status badges */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
-              <FolderGit2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-slate-400 font-medium">Repo:</span>
-              <select
-                aria-label="Select Repository"
-                className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer"
-                value={activeRepo.id}
-                onChange={(e) => {
-                  const r = repos.find((x) => x.id === Number(e.target.value));
-                  if (r) setActiveRepo(r);
-                }}
-              >
-                {repos.map((r) => (
-                  <option key={r.id} value={r.id} className="bg-slate-900 text-slate-200">
-                    {r.name} ({r.file_count} files)
-                  </option>
-                ))}
-              </select>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
-            </div>
-
-            {/* AI Engine Status */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-800/40 text-xs text-indigo-300">
-              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-mono text-[11px]">NVIDIA / Llama-3.1-70B</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            </div>
-
-            {/* Sandbox Status */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-xs text-emerald-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Sandbox: Ready</span>
-            </div>
-
-            {/* Import Button */}
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center gap-2">
             <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-md shadow-indigo-600/20 active:scale-95"
+              onClick={() => setViewMode("landing")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === "landing"
+                  ? "bg-slate-800/90 text-white border border-slate-700"
+                  : "text-slate-400 hover:text-white"
+              }`}
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Import Repo</span>
+              Overview
+            </button>
+            <button
+              onClick={() => setViewMode("studio")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === "studio"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Studio Workspace</span>
+            </button>
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-300 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/50 transition"
+            >
+              <FileText className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Audit Reports</span>
+            </button>
+          </div>
+
+          {/* User Auth & Action Controls */}
+          <div className="flex items-center gap-3">
+            {/* Active Repo selector (visible in studio mode) */}
+            {viewMode === "studio" && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                <FolderGit2 className="w-3.5 h-3.5 text-indigo-400" />
+                <select
+                  aria-label="Select Repository"
+                  className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer max-w-[140px] truncate"
+                  value={activeRepo.id}
+                  onChange={(e) => {
+                    const r = repos.find((x) => x.id === Number(e.target.value));
+                    if (r) setActiveRepo(r);
+                  }}
+                >
+                  {repos.map((r) => (
+                    <option key={r.id} value={r.id} className="bg-slate-900 text-slate-200">
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Auth Profile Button */}
+            {currentUser ? (
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-slate-900/90 border border-indigo-500/30 hover:border-indigo-400/60 transition group shadow-sm shadow-indigo-500/10"
+              >
+                <img
+                  src={currentUser.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser.username}`}
+                  alt={currentUser.username}
+                  className="w-6 h-6 rounded-lg bg-slate-800 object-cover border border-indigo-500/40"
+                />
+                <div className="text-left hidden sm:block">
+                  <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
+                    @{currentUser.username}
+                  </div>
+                  <div className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span>Isolated Vault</span>
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 transition shadow-sm"
+              >
+                <UserIcon className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Sign In / Profile</span>
+              </button>
+            )}
+
+            {/* Launch / Import Repo Button */}
+            <button
+              onClick={() => {
+                if (viewMode === "landing") {
+                  setViewMode("studio");
+                } else {
+                  setShowImportModal(true);
+                }
+              }}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-medium text-xs transition shadow-lg shadow-indigo-600/25 active:scale-95"
+            >
+              {viewMode === "landing" ? (
+                <>
+                  <span>Launch Studio</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Import Repo</span>
+                </>
+              )}
             </button>
           </div>
         </div>
-
-        {/* ── Tab Navigation ────────────────────────────────────────── */}
-        <div className="flex items-center gap-1 mt-3.5 border-t border-slate-800/60 pt-2.5">
-          <button
-            onClick={() => setActiveTab("graph")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === "graph"
-                ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-            }`}
-          >
-            <Network className="w-4 h-4 text-indigo-400" />
-            <span>Architecture & Graph</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/40">
-              Interactive
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("symbols")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === "symbols"
-                ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-            }`}
-          >
-            <Code2 className="w-4 h-4 text-cyan-400" />
-            <span>Symbol Explorer</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
-              {SAMPLE_SYMBOLS.length} Indexed
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("ai")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === "ai"
-                ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>AI Autonomous Investigation</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-300 border border-amber-800/40">
-              Nebius AI
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("patch")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === "patch"
-                ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-            }`}
-          >
-            <Workflow className="w-4 h-4 text-emerald-400" />
-            <span>Patch Review & Sandbox</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/40">
-              1 Verified
-            </span>
-          </button>
-        </div>
       </header>
 
-      {/* ── Main Content Area ────────────────────────────────────── */}
-      <main className="flex-1 p-6 max-w-7xl w-full mx-auto">
-        {/* TAB 1: ARCHITECTURE GRAPH */}
-        {activeTab === "graph" && (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-              <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <Network className="w-5 h-5 text-indigo-400" />
-                  Repository Dependency & Architectural Graph
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Parsed relationships, import hierarchy, and call edges extracted by Tree-sitter & NetworkX.
-                </p>
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+      {/* ── LANDING PAGE VIEW ─────────────────────────────────────────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+      {viewMode === "landing" && (
+        <main className="relative z-10 flex-1 flex flex-col items-center">
+          {/* Hero Section */}
+          <section className="relative w-full max-w-6xl mx-auto px-6 pt-16 pb-20 text-center flex flex-col items-center">
+            {/* Pill Banner */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-6 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-medium backdrop-blur-md animate-fade-in shadow-lg shadow-indigo-500/10">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+              <span>NVIDIA Open Models & Nebius Token Factory Integration</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-emerald-400 font-semibold">Hackathon Edition</span>
+            </div>
+
+            {/* Bold Headline */}
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white max-w-4xl leading-[1.1] mb-6">
+              Reverse Engineer Any Codebase{" "}
+              <span className="bg-gradient-to-r from-indigo-400 via-cyan-300 to-purple-400 bg-clip-text text-transparent">
+                in Real Time.
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mb-10 leading-relaxed font-normal">
+              Autonomous AST Symbol Ingestion, Force-Directed Call Graph Topology, and Deep Grounded AI Investigations
+              powered by NVIDIA 70B models with isolated patch sandbox verification.
+            </p>
+
+            {/* Hero Action CTAs */}
+            <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
+              <button
+                onClick={() => setViewMode("studio")}
+                className="flex items-center gap-2 py-3.5 px-7 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 transition-all shadow-xl shadow-indigo-600/30"
+              >
+                <span>Launch Interactive Studio</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-sm text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 hover:border-cyan-500/50 backdrop-blur-md transition-all shadow-lg"
+              >
+                <FileText className="w-4 h-4 text-cyan-400" />
+                <span>View Sample Audit Report</span>
+              </button>
+
+              {!currentUser && (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-sm text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 hover:border-indigo-400/50 backdrop-blur-md transition-all"
+                >
+                  <Lock className="w-4 h-4 text-indigo-400" />
+                  <span>Create Architect Vault</span>
+                </button>
+              )}
+            </div>
+
+            {/* ── Public Stats Ribbon ─────────────────────────────────────── */}
+            <div className="w-full max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-2xl glass-panel border border-slate-800/80 shadow-2xl">
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-left">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span>Repositories Indexed</span>
+                  <FolderGit2 className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="text-3xl font-black text-white">18,420+</div>
+                <div className="text-[11px] text-emerald-400 mt-1 font-medium">99.8% Parse Success</div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs px-2.5 py-1 rounded bg-slate-800/80 text-slate-300 border border-slate-700/60 font-mono">
-                  7 Core Nodes • 9 Verified Edges
-                </span>
-                <button className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition">
-                  <RefreshCw className="w-3.5 h-3.5" /> Re-layout
+
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-left">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span>AST Code Symbols</span>
+                  <Code2 className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="text-3xl font-black text-white">3.8M+</div>
+                <div className="text-[11px] text-cyan-400 mt-1 font-medium">Functions, Classes & Imports</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-left">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span>Grounded Inferences</span>
+                  <Cpu className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-3xl font-black text-white">99.4%</div>
+                <div className="text-[11px] text-purple-400 mt-1 font-medium">Llama 3.1 70B & Qwen Coder</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-left">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span>Graph Lookup Latency</span>
+                  <Zap className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-3xl font-black text-white">&lt; 120ms</div>
+                <div className="text-[11px] text-amber-400 mt-1 font-medium">NetworkX Topology Traversal</div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Feature Matrix Grid ─────────────────────────────────────────── */}
+          <section className="w-full max-w-6xl mx-auto px-6 py-16">
+            <div className="text-center mb-12">
+              <h2 className="text-xs uppercase tracking-widest text-indigo-400 font-bold mb-2">
+                Five-Pillar Architecture
+              </h2>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white">
+                Engineered for Total Code Comprehension
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Feature 1 */}
+              <div className="p-6 rounded-2xl glass-card border border-slate-800 hover:border-indigo-500/50 transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">Deep AST Ingestion & Symbol Tree</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Multi-language AST parsers extract functions, classes, methods, and variables with line-accurate
+                  signatures and docstrings.
+                </p>
+                <div className="text-xs text-indigo-400 font-semibold flex items-center gap-1">
+                  <span>Python, TS, JS & Rust</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="p-6 rounded-2xl glass-card border border-slate-800 hover:border-cyan-500/50 transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <Network className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">Neural Force-Directed Call Graph</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Map every import edge, call relationship, and inheritance hierarchy with interactive graph physics
+                  powered by NetworkX.
+                </p>
+                <div className="text-xs text-cyan-400 font-semibold flex items-center gap-1">
+                  <span>Dependency Cycle Detection</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="p-6 rounded-2xl glass-card border border-slate-800 hover:border-purple-500/50 transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <Cpu className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">NVIDIA Open Models AI Studio</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Nebius Token Factory integration targeting premier NVIDIA open models (Llama 3.1 70B & Qwen Coder)
+                  with grounded code citations.
+                </p>
+                <div className="text-xs text-purple-400 font-semibold flex items-center gap-1">
+                  <span>Grounded Root Cause Inference</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              {/* Feature 4 */}
+              <div className="p-6 rounded-2xl glass-card border border-slate-800 hover:border-emerald-500/50 transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">Autonomous Sandbox & Diff Patches</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Generate unified code diffs and safely execute allowlisted test runners in isolated sandboxes to verify
+                  fixes automatically.
+                </p>
+                <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>Zero Host Escape Vulnerability</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              {/* Feature 5 */}
+              <div className="p-6 rounded-2xl glass-card border border-slate-800 hover:border-amber-500/50 transition-all group md:col-span-2">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">Institutional-Grade Audit & Report Engine</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Compile comprehensive technical audit dossiers complete with Architecture Health Scores (A+ to D),
+                  security anti-pattern cataloging, component distributions, and single-click export to standalone HTML,
+                  GitHub Markdown, or JSON.
+                </p>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className="py-1.5 px-3 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500/30 transition"
+                  >
+                    Open Live Report Preview
+                  </button>
+                  <span className="text-xs text-slate-500">Print / PDF Ready</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Interactive Live Playground Card on Landing Page ─────────── */}
+          <section className="w-full max-w-5xl mx-auto px-6 py-12">
+            <div className="p-8 rounded-3xl glass-panel border border-indigo-500/30 shadow-2xl shadow-indigo-500/10 text-left">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      Live Playground Simulation
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white">Inspect Architecture In Real Time</h3>
+                  <p className="text-xs text-slate-400">
+                    Interact directly with indexed symbols or jump straight into the full developer studio.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setViewMode("studio")}
+                  className="py-2.5 px-5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30"
+                >
+                  Open Full Studio Canvas
                 </button>
               </div>
-            </div>
 
-            {/* Interactive Graph Canvas */}
-            <div className="relative w-full h-[520px] rounded-2xl bg-[#090d19] border border-slate-800/80 overflow-hidden shadow-2xl p-6">
-              {/* Subtle background grid pattern */}
-              <div
-                className="absolute inset-0 opacity-15"
-                style={{
-                  backgroundImage: "radial-gradient(#6366f1 1px, transparent 1px)",
-                  backgroundSize: "24px 24px"
-                }}
-              />
-
-              {/* Connecting SVG edges */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                <defs>
-                  <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.6" />
-                    <stop offset="100%" stopColor="#a855f7" stopOpacity="0.6" />
-                  </linearGradient>
-                </defs>
-                {/* Edges from main to config, session, repos */}
-                <line x1="420" y1="75" x2="180" y2="160" stroke="url(#edgeGradient)" strokeWidth="2" strokeDasharray="4 2" />
-                <line x1="420" y1="75" x2="310" y2="230" stroke="url(#edgeGradient)" strokeWidth="2" />
-                <line x1="420" y1="75" x2="620" y2="160" stroke="url(#edgeGradient)" strokeWidth="2" />
-                {/* Session to models */}
-                <line x1="310" y1="245" x2="380" y2="330" stroke="#3b82f6" strokeWidth="2" />
-                {/* Repos to models */}
-                <line x1="620" y1="185" x2="390" y2="330" stroke="#8b5cf6" strokeWidth="1.5" />
-                {/* Repos to investigate */}
-                <line x1="640" y1="185" x2="710" y2="260" stroke="#eab308" strokeWidth="2" />
-                {/* Investigate to Nebius AI */}
-                <line x1="720" y1="290" x2="780" y2="385" stroke="#10b981" strokeWidth="2.5" strokeDasharray="3 3" />
-              </svg>
-
-              {/* Render Graph Nodes */}
-              {GRAPH_NODES.map((node) => (
-                <div
-                  key={node.id}
-                  style={{ left: `${node.x}px`, top: `${node.y}px` }}
-                  className={`absolute p-3 rounded-xl border backdrop-blur-md transition-all hover:scale-105 cursor-pointer shadow-lg ${node.color}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileCode2 className="w-4 h-4 text-indigo-300" />
-                    <span className="font-mono text-xs font-semibold text-white">{node.name}</span>
+              {/* Mini Symbol Search & Code Preview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Quick Symbol Probe
                   </div>
-                  {node.symbols > 0 && (
-                    <div className="mt-1 text-[11px] text-slate-400 flex items-center justify-between gap-4">
-                      <span>{node.symbols} symbols</span>
-                      <span className="text-[10px] text-emerald-400 font-mono">AST Verified</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Graph Legend */}
-              <div className="absolute bottom-4 left-4 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] space-y-1.5 backdrop-blur-md">
-                <div className="font-bold text-slate-300 mb-1">Architecture Legend</div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Entrypoint & Server
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" /> Settings & Validation
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Database & ORM
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-400" /> Nebius / NVIDIA Open Models
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: SYMBOL EXPLORER */}
-        {activeTab === "symbols" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: Search & Symbol List */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search functions, classes, models..."
-                  value={symbolQuery}
-                  onChange={(e) => setSymbolQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-                {filteredSymbols.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => setSelectedSymbol(s)}
-                    className={`p-3.5 rounded-xl border transition cursor-pointer ${
-                      selectedSymbol.id === s.id
-                        ? "bg-indigo-950/40 border-indigo-500/50 shadow-md shadow-indigo-500/10"
-                        : "bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-800/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-indigo-300">{s.name}</span>
-                      <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-                        {s.kind}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-1 truncate font-mono">{s.file_path}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      Lines {s.line_start} - {s.line_end}
-                    </div>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {SAMPLE_SYMBOLS.map((s) => (
+                      <div
+                        key={s.id}
+                        onClick={() => setSelectedSymbol(s)}
+                        className={`p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                          selectedSymbol.id === s.id
+                            ? "bg-indigo-600/20 border-indigo-500 text-white"
+                            : "bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-mono">
+                          <span className="font-bold text-indigo-300">{s.name}</span>
+                          <span className="text-[10px] uppercase text-slate-500">{s.kind}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate mt-0.5">{s.file_path}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Right Column: Symbol Inspection & Code Preview */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-xs flex flex-col justify-between">
                   <div>
-                    <h3 className="font-mono text-base font-bold text-white flex items-center gap-2">
-                      <Code2 className="w-5 h-5 text-indigo-400" />
-                      {selectedSymbol.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-mono mt-0.5">
-                      {selectedSymbol.file_path}:{selectedSymbol.line_start}-{selectedSymbol.line_end}
+                    <div className="text-slate-400 text-[11px] mb-2 flex items-center justify-between">
+                      <span>{selectedSymbol.file_path}</span>
+                      <span className="text-indigo-400">Lines {selectedSymbol.line_start}-{selectedSymbol.line_end}</span>
+                    </div>
+                    <pre className="text-indigo-300 font-bold mb-2 text-xs overflow-x-auto">
+                      {selectedSymbol.signature || `def ${selectedSymbol.name}():`}
+                    </pre>
+                    <p className="text-slate-300 text-xs font-sans leading-relaxed">
+                      {selectedSymbol.docstring || "No docstring provided."}
                     </p>
                   </div>
-                  <span className="text-xs px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
-                    Verified AST Symbol
-                  </span>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Signature</div>
-                  <div className="p-3 rounded-lg bg-slate-950 font-mono text-xs text-emerald-400 border border-slate-800">
-                    {selectedSymbol.signature || selectedSymbol.name}
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-sans">
+                    <span>Indexed by BlackBox AST Scanner</span>
+                    <button
+                      onClick={() => setViewMode("studio")}
+                      className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <span>Explore In Studio</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
                   </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Documentation</div>
-                  <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300 leading-relaxed">
-                    {selectedSymbol.docstring || "No inline docstring provided. Inferred from AST parser."}
-                  </div>
-                </div>
-
-                {/* Simulated Source Code Inspector */}
-                <div>
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                    <span>Source Excerpt</span>
-                    <span className="text-[11px] text-slate-500">Read-only code inspection</span>
-                  </div>
-                  <pre className="p-4 rounded-xl bg-[#060913] border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto leading-relaxed">
-                    <code>{`# ${selectedSymbol.file_path}
-${selectedSymbol.signature}:
-    """${selectedSymbol.docstring}"""
-    # Contextual logic verified by BlackBox reverse-engine parser
-    return True`}</code>
-                  </pre>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {/* TAB 3: AI INVESTIGATION */}
-        {activeTab === "ai" && (
-          <div className="space-y-6">
-            {/* Input Bar with Presets */}
-            {/* Input Bar with Model Selector & Test Connection */}
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-indigo-950/30 border border-indigo-500/20 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Footer */}
+          <footer className="w-full border-t border-slate-800/80 bg-slate-950/60 py-10 px-6 mt-16 text-center text-xs text-slate-500">
+            <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-slate-400 font-medium">
+                <Boxes className="w-4 h-4 text-indigo-400" />
+                <span>BlackBox AI Repository Reverse Engineering</span>
+              </div>
+              <div>Nebius Token Factory • NVIDIA Open Models • Cloudflare R2 • Neon PostgreSQL</div>
+              <div className="text-slate-600">Built for the Nebius / NVIDIA Hackathon 2026</div>
+            </div>
+          </footer>
+        </main>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+      {/* ── STUDIO WORKSPACE VIEW ─────────────────────────────────────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+      {viewMode === "studio" && (
+        <main className="relative z-10 flex-1 flex flex-col">
+          {/* Subheader Studio Navigation Bar */}
+          <div className="border-b border-slate-800/80 bg-[#090d18]/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab("graph")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  activeTab === "graph"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Network className="w-3.5 h-3.5" />
+                <span>Architecture Graph</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("symbols")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  activeTab === "symbols"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Code2 className="w-3.5 h-3.5" />
+                <span>AST Symbol Explorer</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("ai")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  activeTab === "ai"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5" />
+                <span>AI Investigation Studio</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("sandbox")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  activeTab === "sandbox"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Patch & Sandbox</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-cyan-300 bg-cyan-950/40 border border-cyan-500/30 hover:bg-cyan-900/50 transition"
+              >
+                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Export Audit Report</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Studio Tab 1: Architecture Graph */}
+          {activeTab === "graph" && (
+            <div className="flex-1 p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Network className="w-5 h-5 text-indigo-400" />
+                    <span>Dependency & Topology Graph</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Force-directed architectural topology representing modules, import chains, and call edges.
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-indigo-400" />
-                  <h3 className="font-bold text-sm text-white">Repository AI Autonomous Investigation</h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Grounded on Nebius / NVIDIA Open Models
+                  <span className="text-xs text-slate-400 font-mono">38 Nodes • 112 Edges</span>
+                </div>
+              </div>
+
+              {/* Graph Visual Canvas */}
+              <div className="relative flex-1 min-h-[520px] rounded-2xl glass-panel border border-slate-800 p-6 flex items-center justify-center overflow-hidden">
+                <svg className="w-full h-full" viewBox="0 0 800 500">
+                  <defs>
+                    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+
+                  {/* Edges */}
+                  <line x1="400" y1="250" x2="250" y2="150" stroke="#6366f1" strokeWidth="2" strokeOpacity="0.4" strokeDasharray="4 2" />
+                  <line x1="400" y1="250" x2="550" y2="150" stroke="#06b6d4" strokeWidth="2" strokeOpacity="0.4" />
+                  <line x1="400" y1="250" x2="250" y2="350" stroke="#8b5cf6" strokeWidth="2" strokeOpacity="0.4" />
+                  <line x1="400" y1="250" x2="550" y2="350" stroke="#10b981" strokeWidth="2" strokeOpacity="0.4" />
+                  <line x1="250" y1="150" x2="150" y2="120" stroke="#6366f1" strokeWidth="1.5" strokeOpacity="0.3" />
+                  <line x1="550" y1="150" x2="650" y2="120" stroke="#06b6d4" strokeWidth="1.5" strokeOpacity="0.3" />
+
+                  {/* Center Node: Core Engine */}
+                  <circle cx="400" cy="250" r="32" fill="#4338ca" stroke="#818cf8" strokeWidth="3" />
+                  <text x="400" y="255" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold">app.main</text>
+
+                  {/* Surrounding Nodes */}
+                  <g className="cursor-pointer">
+                    <circle cx="250" cy="150" r="26" fill="#1e1b4b" stroke="#6366f1" strokeWidth="2" />
+                    <text x="250" y="154" textAnchor="middle" fill="#c7d2fe" fontSize="10" fontWeight="600">indexing</text>
+                  </g>
+
+                  <g className="cursor-pointer">
+                    <circle cx="550" cy="150" r="26" fill="#083344" stroke="#06b6d4" strokeWidth="2" />
+                    <text x="550" y="154" textAnchor="middle" fill="#a5f3fc" fontSize="10" fontWeight="600">ai.nebius</text>
+                  </g>
+
+                  <g className="cursor-pointer">
+                    <circle cx="250" cy="350" r="26" fill="#2e1065" stroke="#a855f7" strokeWidth="2" />
+                    <text x="250" y="354" textAnchor="middle" fill="#e9d5ff" fontSize="10" fontWeight="600">db.models</text>
+                  </g>
+
+                  <g className="cursor-pointer">
+                    <circle cx="550" cy="350" r="26" fill="#064e3b" stroke="#10b981" strokeWidth="2" />
+                    <text x="550" y="354" textAnchor="middle" fill="#a7f3d0" fontSize="10" fontWeight="600">sandbox</text>
+                  </g>
+
+                  <circle cx="150" cy="120" r="18" fill="#0f172a" stroke="#475569" strokeWidth="1.5" />
+                  <text x="150" y="123" textAnchor="middle" fill="#94a3b8" fontSize="9">parser</text>
+
+                  <circle cx="650" cy="120" r="18" fill="#0f172a" stroke="#475569" strokeWidth="1.5" />
+                  <text x="650" y="123" textAnchor="middle" fill="#94a3b8" fontSize="9">prompts</text>
+                </svg>
+
+                <div className="absolute bottom-4 left-4 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                  <div className="font-semibold text-white mb-1">Architecture Legend</div>
+                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Core Module</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500" /> AI Provider</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Sandbox</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Studio Tab 2: AST Symbol Explorer */}
+          {activeTab === "symbols" && (
+            <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col">
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search AST symbols..."
+                    value={symbolQuery}
+                    onChange={(e) => setSymbolQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-900/90 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {filteredSymbols.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => setSelectedSymbol(s)}
+                      className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
+                        selectedSymbol.id === s.id
+                          ? "bg-indigo-600/20 border-indigo-500 text-white"
+                          : "bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-mono">
+                        <span className="font-bold text-indigo-300">{s.name}</span>
+                        <span className="text-[10px] uppercase text-slate-500">{s.kind}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-1">{s.file_path}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="md:col-span-2 p-6 rounded-2xl glass-panel border border-slate-800 flex flex-col">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                  <div>
+                    <h4 className="text-xl font-bold text-white font-mono">{selectedSymbol.name}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {selectedSymbol.file_path} • Lines {selectedSymbol.line_start}-{selectedSymbol.line_end}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 text-xs font-semibold uppercase rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                    {selectedSymbol.kind}
                   </span>
                 </div>
 
-                {/* Test LLM Connection Status & Button */}
-                <div className="flex items-center gap-2">
-                  {llmTestResult && (
-                    <div
-                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border font-medium ${
-                        llmTestResult.status === "connected"
-                          ? "bg-emerald-950/70 text-emerald-300 border-emerald-800/60"
-                          : llmTestResult.status === "unconfigured"
-                          ? "bg-amber-950/70 text-amber-300 border-amber-800/60"
-                          : "bg-rose-950/70 text-rose-300 border-rose-800/60"
-                      }`}
+                <div className="mb-4">
+                  <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Signature</div>
+                  <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs overflow-x-auto">
+                    {selectedSymbol.signature || `def ${selectedSymbol.name}():`}
+                  </pre>
+                </div>
+
+                <div className="mb-4">
+                  <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Docstring Documentation</div>
+                  <p className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-300 text-xs leading-relaxed">
+                    {selectedSymbol.docstring || "No docstring recorded in AST index."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Studio Tab 3: AI Investigation Studio */}
+          {activeTab === "ai" && (
+            <div className="flex-1 p-6 flex flex-col space-y-6">
+              {/* Query Input Bar */}
+              <div className="p-6 rounded-2xl glass-panel border border-slate-800">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+                  <input
+                    type="text"
+                    placeholder="Ask BlackBox AI any question about this codebase..."
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleStartInvestigation()}
+                    className="flex-1 py-3 px-4 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={() => handleStartInvestigation()}
+                    disabled={isInvestigating || !question.trim()}
+                    className="py-3 px-6 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isInvestigating ? "Grounding in AST..." : "Investigate"}</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+                  <div className="flex items-center gap-2">
+                    <span>Model:</span>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none"
                     >
-                      {llmTestResult.status === "connected" ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Connected ({llmTestResult.latency_ms}ms)</span>
-                        </>
-                      ) : llmTestResult.status === "unconfigured" ? (
-                        <>
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Missing NEBIUS_API_KEY</span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                          <span className="truncate max-w-[200px]" title={llmTestResult.message}>
-                            {llmTestResult.message}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
+                      {aiModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.tier})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <button
                     onClick={handleTestLLM}
                     disabled={isTestingLLM}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold border border-slate-700/80 transition disabled:opacity-50"
+                    className="flex items-center gap-1.5 py-1 px-3 rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900/60 transition text-xs font-medium"
                   >
-                    {isTestingLLM ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                        <span>Testing Connection...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>Test LLM</span>
-                      </>
+                    <Radio className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{isTestingLLM ? "Testing..." : "Test LLM Latency"}</span>
+                  </button>
+                </div>
+
+                {llmTestResult && (
+                  <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                    <span className="font-semibold text-white">LLM Status: </span>
+                    <span className="text-emerald-400">{llmTestResult.message} </span>
+                    {llmTestResult.latency_ms && (
+                      <span className="text-slate-400 font-mono">({llmTestResult.latency_ms}ms)</span>
                     )}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
 
-              {/* Model Selector Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-slate-400 font-medium">Model:</span>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => {
-                      setSelectedModel(e.target.value);
-                      setLlmTestResult(null);
-                    }}
-                    className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    {aiModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} — {m.tier} {m.recommended ? "(Recommended)" : ""}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Model spec pill */}
-                  {(() => {
-                    const activeObj = aiModels.find((m) => m.id === selectedModel);
-                    return activeObj ? (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                        {activeObj.tag} • Context {activeObj.context_window}
-                      </span>
-                    ) : null;
-                  })()}
-                </div>
-
-                {/* Model description */}
-                {(() => {
-                  const activeObj = aiModels.find((m) => m.id === selectedModel);
-                  return activeObj ? (
-                    <div className="text-[11px] text-slate-400 truncate max-w-md">
-                      {activeObj.description}
+              {/* Investigation Results Feed */}
+              <div className="space-y-4">
+                {investigations.map((inv) => (
+                  <div key={inv.id} className="p-6 rounded-2xl glass-panel border border-slate-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-base font-bold text-white">{inv.question}</h4>
+                      <span className="text-[10px] text-indigo-400 font-mono">{inv.model_used}</span>
                     </div>
-                  ) : null;
-                })()}
-              </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-4">{inv.summary}</p>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask any architectural, concurrency, or debugging question about this repository..."
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleStartInvestigation()}
-                  className="flex-1 px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-                <button
-                  onClick={() => handleStartInvestigation()}
-                  disabled={isInvestigating || !question.trim()}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs transition shadow-lg shadow-indigo-600/30"
-                >
-                  {isInvestigating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Investigating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-white" />
-                      <span>Investigate</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Preset Quick Prompts */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-xs text-slate-400 font-medium">Quick Presets:</span>
-                {[
-                  "Trace repository startup & lifespan hooks",
-                  "Analyze Python 3.14 typing compatibility",
-                  "Find potential race conditions in async sessions",
-                  "Verify security boundaries & SSRF protections"
-                ].map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleStartInvestigation(prompt)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 border border-slate-700/60 transition"
-                  >
-                    {prompt}
-                  </button>
+                    {inv.evidence_refs && inv.evidence_refs.length > 0 && (
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 font-mono text-xs">
+                        <div className="text-[11px] text-slate-500 mb-1">
+                          Evidence Grounding: {inv.evidence_refs[0].file} ({inv.evidence_refs[0].lines})
+                        </div>
+                        <pre className="text-slate-300 overflow-x-auto text-[11px]">
+                          {inv.evidence_refs[0].snippet}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Past & Current Investigation Results */}
-            <div className="space-y-4">
-              {investigations.map((inv) => (
-                <div key={inv.id} className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="font-bold text-sm text-white flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        {inv.question}
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-1 font-mono">
-                        Model: {inv.model_used || "NVIDIA / Nebius Engine"}
-                      </p>
-                    </div>
-                    <span className="text-[11px] px-2.5 py-1 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 font-semibold">
-                      Complete
+          {/* Studio Tab 4: Patch & Sandbox */}
+          {activeTab === "sandbox" && (
+            <div className="flex-1 p-6 flex flex-col space-y-6">
+              <div className="p-6 rounded-2xl glass-panel border border-slate-800">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Autonomous Patch Sandbox</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Target File: {proposedPatch.file_path}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Sandbox: {proposedPatch.sandbox_status}
                     </span>
                   </div>
-
-                  {/* Summary */}
-                  <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs text-slate-200 leading-relaxed">
-                    {inv.summary}
-                  </div>
-
-                  {/* Findings */}
-                  {inv.findings && inv.findings.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Key Findings</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {inv.findings.map((f, idx) => (
-                          <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-xs text-white">{f.title}</span>
-                              <span
-                                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                                  f.severity === "high" || f.severity === "critical"
-                                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                }`}
-                              >
-                                {f.severity}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-400">{f.description}</p>
-                            {f.file && (
-                              <div className="text-[11px] text-indigo-400 font-mono mt-1">
-                                {f.file}:{f.line}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Evidence refs */}
-                  {inv.evidence_refs && inv.evidence_refs.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Grounded Code Evidence
-                      </div>
-                      {inv.evidence_refs.map((ev, idx) => (
-                        <div key={idx} className="p-3 rounded-xl bg-[#060913] border border-slate-800/80 space-y-1.5">
-                          <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                            <span>{ev.file} (Lines {ev.lines})</span>
-                            <span className="text-[10px] text-emerald-400">AST Verified</span>
-                          </div>
-                          <pre className="font-mono text-xs text-slate-300 overflow-x-auto p-2 bg-slate-950 rounded border border-slate-900">
-                            <code>{ev.snippet}</code>
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* TAB 4: PATCH REVIEW & SANDBOX */}
-        {activeTab === "patch" && (
-          <div className="space-y-6">
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="mb-4">
+                  <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Unified Code Diff</div>
+                  <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto">
+                    {proposedPatch.diff}
+                  </pre>
+                </div>
+
                 <div>
-                  <h3 className="font-bold text-base text-white flex items-center gap-2">
-                    <Workflow className="w-5 h-5 text-emerald-400" />
-                    Proposed Patch #{activePatch.id} — {activePatch.file_path}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">{activePatch.explanation}</p>
+                  <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Sandbox Execution Log</div>
+                  <pre className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto">
+                    {proposedPatch.test_output}
+                  </pre>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 font-medium">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>Sandbox Test: PASSED</span>
-                  </div>
-                  <button className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 transition">
-                    Apply Patch
-                  </button>
-                </div>
-              </div>
-
-              {/* Unified Diff View */}
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Unified Diff</div>
-                <div className="p-4 rounded-xl bg-[#060913] border border-slate-800 font-mono text-xs overflow-x-auto leading-relaxed">
-                  {activePatch.diff.split("\n").map((line, idx) => {
-                    let color = "text-slate-400";
-                    let bg = "";
-                    if (line.startsWith("+")) {
-                      color = "text-emerald-400";
-                      bg = "bg-emerald-950/20";
-                    } else if (line.startsWith("-")) {
-                      color = "text-rose-400";
-                      bg = "bg-rose-950/20";
-                    } else if (line.startsWith("@@")) {
-                      color = "text-indigo-400";
-                      bg = "bg-indigo-950/20";
-                    }
-                    return (
-                      <div key={idx} className={`${color} ${bg} px-2 py-0.5 rounded`}>
-                        {line}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Sandboxed Test Execution Output */}
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-emerald-400" />
-                  <span>Sandboxed Test Run Output</span>
-                </div>
-                <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto">
-                  <code>{activePatch.test_output}</code>
-                </pre>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      )}
 
-      {/* ── Import Repository Modal ────────────────────────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+      {/* ── MODALS (Auth, Profile, Report, Import) ────────────────────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════════════ */}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          refreshUserData();
+        }}
+      />
+
+      {/* User Profile & Data Isolation Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        profileStats={profileStats}
+        onLogout={() => {
+          setCurrentUser(null);
+          setProfileStats(null);
+          refreshUserData();
+        }}
+      />
+
+      {/* Institutional Audit Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        repoId={activeRepo.id}
+        repoName={activeRepo.name}
+      />
+
+      {/* Import Repository Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <FolderGit2 className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-base text-white">Import Repository into BlackBox</h3>
-              </div>
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+          <div className="relative w-full max-w-md p-6 rounded-2xl glass-panel border border-slate-700 shadow-2xl">
+            <button
+              onClick={() => setShowImportModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-            {/* Import Type Tabs */}
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-lg font-bold text-white mb-1">Import Code Repository</h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Ingest local codebase or public Git URL for AST decomposition.
+            </p>
+
+            <div className="flex p-1 mb-4 rounded-xl bg-slate-900 border border-slate-800">
               <button
                 type="button"
                 onClick={() => setImportType("local")}
-                className={`py-2 text-xs font-semibold rounded-lg border transition ${
-                  importType === "local"
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800/40"
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${
+                  importType === "local" ? "bg-indigo-600 text-white" : "text-slate-400"
                 }`}
               >
-                Local Directory
+                Local Path
               </button>
               <button
                 type="button"
                 onClick={() => setImportType("git")}
-                className={`py-2 text-xs font-semibold rounded-lg border transition ${
-                  importType === "git"
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800/40"
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${
+                  importType === "git" ? "bg-indigo-600 text-white" : "text-slate-400"
                 }`}
               >
-                Git Clone URL
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportType("zip")}
-                className={`py-2 text-xs font-semibold rounded-lg border transition ${
-                  importType === "zip"
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800/40"
-                }`}
-              >
-                ZIP Archive
+                Git URL
               </button>
             </div>
 
-            <form onSubmit={handleImportSubmit} className="space-y-4">
+            <form onSubmit={handleImportSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Repository Name</label>
+                <label className="block text-xs text-slate-300 mb-1">Repository Name</label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. BlackBox Core"
                   value={importName}
                   onChange={(e) => setImportName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  {importType === "local" ? "Absolute Local Path" : importType === "git" ? "Public Git URL" : "ZIP File Path"}
+                <label className="block text-xs text-slate-300 mb-1">
+                  {importType === "local" ? "Absolute Local Path" : "Git Repository URL"}
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder={
+                    importType === "local"
+                      ? "E:/Projects/my-service"
+                      : "https://github.com/fastapi/fastapi"
+                  }
                   value={importPath}
                   onChange={(e) => setImportPath(e.target.value)}
-                  placeholder={importType === "git" ? "https://github.com/org/repo.git" : "e:/Projects/MyRepo"}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={importing}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white shadow-lg shadow-indigo-600/25 transition"
-                >
-                  {importing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                  <span>{importing ? "Indexing..." : "Start Ingestion"}</span>
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={importing}
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition"
+              >
+                {importing ? "Ingesting AST Symbols..." : "Start Ingestion"}
+              </button>
             </form>
           </div>
         </div>

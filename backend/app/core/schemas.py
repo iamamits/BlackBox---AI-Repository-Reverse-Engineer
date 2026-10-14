@@ -299,3 +299,81 @@ class HealthResponse(BaseModel):
     sandbox: str
     storage: str = "local"
     queue: str = "in_process"
+
+
+# ── User & Auth ───────────────────────────────────────────────────────────
+
+
+class UserRegister(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    username: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
+    full_name: str | None = None
+
+
+class UserLogin(BaseModel):
+    username_or_email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    username: str
+    full_name: str | None = None
+    avatar_url: str | None = None
+    is_active: bool
+    created_at: datetime
+
+
+class UserProfileStats(BaseModel):
+    user: UserRead
+    repository_count: int
+    investigation_count: int
+    patch_count: int
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserRead
+
+
+# ── Reports ───────────────────────────────────────────────────────────────
+
+
+class MetricCard(BaseModel):
+    label: str
+    value: str
+    change: str | None = None
+    status: str = "normal"  # normal | good | warning | critical
+
+
+class AuditFinding(BaseModel):
+    title: str
+    severity: str  # critical | high | medium | low | info
+    category: str
+    description: str
+    file_path: str | None = None
+    line_number: int | None = None
+    remediation: str | None = None
+
+
+class RepoAuditReport(BaseModel):
+    repository_id: int
+    repository_name: str
+    primary_language: str | None = None
+    source_type: str
+    health_score: int  # 0 to 100
+    security_grade: str  # A+, A, B, C, D
+    generated_at: str
+    metrics: list[MetricCard]
+    summary: str
+    component_breakdown: list[dict[str, Any]]
+    symbol_statistics: dict[str, int]
+    security_findings: list[AuditFinding]
+    investigation_history: list[dict[str, Any]]
+    patches_summary: list[dict[str, Any]]
+

@@ -5,6 +5,60 @@
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// ── Auth & User Types ────────────────────────────────────────────────────────
+
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UserProfileStats {
+  user: User;
+  repository_count: number;
+  investigation_count: number;
+  patch_count: number;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+// Token Storage Helpers
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("blackbox_auth_token");
+}
+
+export function setStoredToken(token: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("blackbox_auth_token", token);
+  }
+}
+
+export function clearStoredToken(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("blackbox_auth_token");
+  }
+}
+
+export function getAuthHeaders(): HeadersInit {
+  const token = getStoredToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// ── Core Domain Types ────────────────────────────────────────────────────────
+
 export interface RepoSummary {
   id: number;
   name: string;
@@ -90,58 +144,59 @@ export interface ProposedPatch {
   test_output?: string;
 }
 
-export async function fetchHealth(): Promise<SystemHealth> {
-  try {
-    const res = await fetch(`${API_BASE}/api/health`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Health check failed");
-    return await res.json();
-  } catch (err) {
-    return {
-      status: "degraded",
-      version: "0.1.0",
-      database: "connected (local)",
-      ai_provider: "nebius (ready)",
-      ai_model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
-      workspace_root: "./workspace_data",
-    };
-  }
+// ── Report Engine Types ──────────────────────────────────────────────────────
+
+export interface MetricCard {
+  label: string;
+  value: string;
+  change?: string | null;
+  status: "normal" | "good" | "warning" | "critical";
 }
 
-export async function fetchRepositories(): Promise<RepoSummary[]> {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/repos/`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch repositories");
-    const data = await res.json();
-    return data.items || [];
-  } catch (err) {
-    return [];
-  }
+export interface AuditFinding {
+  title: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  category: string;
+  description: string;
+  file_path?: string | null;
+  line_number?: number | null;
+  remediation?: string | null;
 }
 
-export async function importLocalRepo(name: string, path: string): Promise<RepoSummary> {
-  const res = await fetch(`${API_BASE}/api/v1/repos/import/local`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, path }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to import repo" }));
-    throw new Error(err.detail || "Import failed");
-  }
-  return await res.json();
-}
-
-export async function importGitRepo(url: string, branch: string = "main"): Promise<RepoSummary> {
-  const res = await fetch(`${API_BASE}/api/v1/repos/import/git`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, branch }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Git import failed" }));
-    throw new Error(err.detail || "Git import failed");
-  }
-  return await res.json();
+export interface RepoAuditReport {
+  repository_id: number;
+  repository_name: string;
+  primary_language?: string | null;
+  source_type: string;
+  health_score: number;
+  security_grade: string;
+  generated_at: string;
+  metrics: MetricCard[];
+  summary: string;
+  component_breakdown: Array<{
+    language: string;
+    files: number;
+    percentage: number;
+  }>;
+  symbol_statistics: Record<string, number>;
+  security_findings: AuditFinding[];
+  investigation_history: Array<{
+    id: number;
+    question: string;
+    status: string;
+    summary: string;
+    model_used: string;
+    findings_count: number;
+    created_at: string;
+  }>;
+  patches_summary: Array<{
+    id: number;
+    investigation_id: number;
+    explanation: string;
+    status: string;
+    diff_preview: string;
+    sandbox_status: string;
+  }>;
 }
 
 export interface AIModelItem {
@@ -161,6 +216,120 @@ export interface TestLLMResponse {
   model: string;
   message: string;
   reply?: string;
+}
+
+// ── Authentication API Calls ─────────────────────────────────────────────────
+
+export async function registerUser(
+  email: string,
+  username: string,
+  password: string,
+  fullName?: string
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, username, password, full_name: fullName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Registration failed" }));
+    throw new Error(err.detail || "Registration failed");
+  }
+  const data: AuthResponse = await res.json();
+  setStoredToken(data.access_token);
+  return data;
+}
+
+export async function loginUser(usernameOrEmail: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username_or_email: usernameOrEmail, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Login failed" }));
+    throw new Error(err.detail || "Invalid credentials");
+  }
+  const data: AuthResponse = await res.json();
+  setStoredToken(data.access_token);
+  return data;
+}
+
+export async function fetchCurrentUser(): Promise<UserProfileStats | null> {
+  const token = getStoredToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      clearStoredToken();
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// ── System Health & Repository Calls ─────────────────────────────────────────
+
+export async function fetchHealth(): Promise<SystemHealth> {
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Health check failed");
+    return await res.json();
+  } catch (err) {
+    return {
+      status: "degraded",
+      version: "0.1.0",
+      database: "connected (local)",
+      ai_provider: "nebius (ready)",
+      ai_model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+      workspace_root: "./workspace_data",
+    };
+  }
+}
+
+export async function fetchRepositories(): Promise<RepoSummary[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/repos/`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to fetch repositories");
+    const data = await res.json();
+    return data.items || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+export async function importLocalRepo(name: string, path: string): Promise<RepoSummary> {
+  const res = await fetch(`${API_BASE}/api/v1/repos/import/local`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ name, path }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to import repo" }));
+    throw new Error(err.detail || "Import failed");
+  }
+  return await res.json();
+}
+
+export async function importGitRepo(url: string, branch: string = "main"): Promise<RepoSummary> {
+  const res = await fetch(`${API_BASE}/api/v1/repos/import/git`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ url, branch }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Git import failed" }));
+    throw new Error(err.detail || "Git import failed");
+  }
+  return await res.json();
 }
 
 export async function fetchAIModels(): Promise<AIModelItem[]> {
@@ -213,7 +382,7 @@ export async function fetchAIModels(): Promise<AIModelItem[]> {
 export async function testLLMConnection(model?: string): Promise<TestLLMResponse> {
   const res = await fetch(`${API_BASE}/api/v1/ai/test`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ model }),
   });
   if (!res.ok) {
@@ -235,7 +404,7 @@ export async function startInvestigation(
 ): Promise<InvestigationResult> {
   const res = await fetch(`${API_BASE}/api/v1/investigations/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ repository_id: repoId, question, model }),
   });
   if (!res.ok) {
@@ -245,3 +414,19 @@ export async function startInvestigation(
   return await res.json();
 }
 
+// ── Report Engine Calls ──────────────────────────────────────────────────────
+
+export async function fetchReport(repoId: number): Promise<RepoAuditReport> {
+  const res = await fetch(`${API_BASE}/api/v1/reports/${repoId}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load audit report for repository #${repoId}`);
+  }
+  return await res.json();
+}
+
+export function getReportDownloadUrl(repoId: number, format: "html" | "markdown" | "json" = "html"): string {
+  return `${API_BASE}/api/v1/reports/${repoId}/download?format=${format}`;
+}

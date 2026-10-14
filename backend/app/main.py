@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.db.session import Base, engine
-from app.api import repos, indexing, search, graph, investigate, patches, ai
+from app.api import repos, indexing, search, graph, investigate, patches, ai, auth, reports
 
 # ── Logging ───────────────────────────────────────────────────────────────
 
@@ -47,6 +47,12 @@ async def lifespan(app: FastAPI):
     # Create tables (Alembic will handle this in production)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Self-healing migration for existing databases: ensure user_id column exists on repositories
+        try:
+            from sqlalchemy import text
+            await conn.execute(text("ALTER TABLE repositories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
+        except Exception:
+            pass  # Already exists or handled by create_all
     log.info("Database tables initialised")
 
     yield
@@ -170,6 +176,7 @@ async def ready() -> dict[str, Any]:
 
 API_PREFIX = "/api/v1"
 
+app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(repos.router, prefix=API_PREFIX)
 app.include_router(indexing.router, prefix=API_PREFIX)
 app.include_router(search.router, prefix=API_PREFIX)
@@ -177,3 +184,4 @@ app.include_router(graph.router, prefix=API_PREFIX)
 app.include_router(investigate.router, prefix=API_PREFIX)
 app.include_router(patches.router, prefix=API_PREFIX)
 app.include_router(ai.router, prefix=API_PREFIX)
+app.include_router(reports.router, prefix=API_PREFIX)

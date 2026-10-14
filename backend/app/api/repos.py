@@ -5,10 +5,10 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models import IndexedFile, Repository, RepoStatus, SourceType
+from app.core.models import IndexedFile, Repository, RepoStatus, SourceType, User
 from app.core.schemas import (
     RepoImportGit,
     RepoImportLocal,
@@ -16,6 +16,7 @@ from app.core.schemas import (
     RepoRead,
     RepoSummary,
 )
+from app.core.security import get_optional_user
 from app.config import get_settings
 from app.db.session import get_db
 
@@ -34,8 +35,17 @@ async def _start_indexing(repo_id: int) -> None:
 
 
 @router.get("/", response_model=RepoList, summary="List all repositories")
-async def list_repos(db: AsyncSession = Depends(get_db)) -> RepoList:
-    result = await db.execute(select(Repository).order_by(Repository.created_at.desc()))
+async def list_repos(
+    optional_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> RepoList:
+    query = select(Repository)
+    if optional_user:
+        # If user is authenticated, prioritize user-isolated repos + public unassigned repos
+        query = query.where(or_(Repository.user_id == optional_user.id, Repository.user_id.is_(None)))
+    query = query.order_by(Repository.created_at.desc())
+
+    result = await db.execute(query)
     repos = result.scalars().all()
     return RepoList(
         items=[RepoSummary.model_validate(r) for r in repos],
@@ -52,6 +62,7 @@ async def list_repos(db: AsyncSession = Depends(get_db)) -> RepoList:
 async def import_local(
     payload: RepoImportLocal,
     background_tasks: BackgroundTasks,
+    optional_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepoRead:
     settings = get_settings()
@@ -64,6 +75,7 @@ async def import_local(
     # Security: ensure path doesn't escape
     dest = settings.workspace_root / f"repo_{src.name}"
     repo = Repository(
+        user_id=optional_user.id if optional_user else None,
         name=payload.name,
         source_type=SourceType.LOCAL,
         source_path=str(src),
@@ -87,6 +99,7 @@ async def import_zip(
     name: str,
     file: UploadFile,
     background_tasks: BackgroundTasks,
+    optional_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepoRead:
     if not file.filename or not file.filename.endswith(".zip"):
@@ -105,6 +118,7 @@ async def import_zip(
     zip_path.write_bytes(content)
 
     repo = Repository(
+        user_id=optional_user.id if optional_user else None,
         name=name,
         source_type=SourceType.ZIP,
         source_path=str(zip_path),
@@ -127,6 +141,7 @@ async def import_zip(
 async def import_git(
     payload: RepoImportGit,
     background_tasks: BackgroundTasks,
+    optional_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepoRead:
     # URL validation — Milestone 3 adds full SSRF protection
@@ -137,6 +152,7 @@ async def import_git(
             detail="Only http:// and https:// Git URLs are supported",
         )
     repo = Repository(
+        user_id=optional_user.id if optional_user else None,
         name=payload.name,
         source_type=SourceType.GIT,
         source_path=url,
