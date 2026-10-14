@@ -167,9 +167,33 @@ async def import_git(
         workspace_path=str(dest),
         status=RepoStatus.PENDING,
     )
-    db.add(repo)
-    await db.flush()
-    await db.refresh(repo)
+    try:
+        db.add(repo)
+        await db.flush()
+        await db.refresh(repo)
+    except Exception as e:
+        await db.rollback()
+        err_str = str(e)
+        # Self-heal Postgres native enum if missing 'git'
+        if "sourcetype" in err_str.lower() or "enum" in err_str.lower():
+            try:
+                from sqlalchemy import text
+                await db.execute(text("ALTER TYPE sourcetype ADD VALUE IF NOT EXISTS 'git'"))
+                await db.commit()
+                db.add(repo)
+                await db.flush()
+                await db.refresh(repo)
+            except Exception as retry_err:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Database enum migration error: {str(retry_err)}",
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error during repository creation: {err_str}",
+            )
+
     background_tasks.add_task(_start_indexing, repo.id)
     return RepoRead.model_validate(repo)
 

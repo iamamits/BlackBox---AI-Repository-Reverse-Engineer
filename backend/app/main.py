@@ -50,6 +50,11 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
             try:
                 from sqlalchemy import text
+                await conn.execute(text("ALTER TYPE sourcetype ADD VALUE IF NOT EXISTS 'git'"))
+            except Exception:
+                pass
+            try:
+                from sqlalchemy import text
                 await conn.execute(text("ALTER TABLE repositories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
             except Exception:
                 pass  # Already exists or handled by create_all

@@ -326,8 +326,9 @@ export async function importGitRepo(url: string, name?: string): Promise<RepoSum
     body: JSON.stringify({ url, name: name || undefined }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Git import failed" }));
-    throw new Error(err.detail || "Git import failed");
+    const err = await res.json().catch(() => null);
+    const msg = err?.detail || err?.error?.message || err?.message || `Git import failed (HTTP ${res.status})`;
+    throw new Error(msg);
   }
   return await res.json();
 }
