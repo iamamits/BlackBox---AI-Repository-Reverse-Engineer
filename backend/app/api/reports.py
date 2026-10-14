@@ -238,6 +238,23 @@ async def download_report(
         )
 
     if format == "markdown":
+        metrics_table = "\n".join(f"| {m.label} | **{m.value}** | {m.change or '-'} |" for m in report.metrics)
+        components_table = "\n".join(f"| {c['language']} | {c['files']} | {c['percentage']}% |" for c in report.component_breakdown)
+        symbols_table = "\n".join(f"| {kind.capitalize()} | {count} |" for kind, count in report.symbol_statistics.items())
+
+        findings_lines = []
+        for f in report.security_findings:
+            loc = f"{f.file_path or 'Global'}:{f.line_number or '-'}"
+            rem = f.remediation or "Review code patch."
+            findings_lines.append(
+                f"### [{f.severity.upper()}] {f.title}\n"
+                f"- **Category**: {f.category}\n"
+                f"- **Location**: `{loc}`\n"
+                f"- **Description**: {f.description}\n"
+                f"- **Remediation**: {rem}\n"
+            )
+        findings_md = "\n".join(findings_lines)
+
         md = f"""# BlackBox Repository Audit Report: {report.repository_name}
 
 > Generated on: {report.generated_at}  
@@ -254,23 +271,23 @@ async def download_report(
 
 | Metric | Value | Detail |
 |---|---|---|
-{chr(10).join(f"| {m.label} | **{m.value}** | {m.change or '-'} |" for m in report.metrics)}
+{metrics_table}
 
 ## 3. Technology & Component Breakdown
 
 | Language | Files | Share |
 |---|---|---|
-{chr(10).join(f"| {c['language']} | {c['files']} | {c['percentage']}% |" for c in report.component_breakdown)}
+{components_table}
 
 ## 4. AST Symbol Hierarchy
 
 | Symbol Kind | Count |
 |---|---|
-{chr(10).join(f"| {kind.capitalize()} | {count} |" for kind, count in report.symbol_statistics.items())}
+{symbols_table}
 
 ## 5. Security & Architectural Findings
 
-{chr(10).join(f"### [{f.severity.upper()}] {f.title}\\n- **Category**: {f.category}\\n- **Location**: `{f.file_path or 'Global'}:{f.line_number or '-'}`\\n- **Description**: {f.description}\\n- **Remediation**: {f.remediation or 'Review code patch.'}\\n" for f in report.security_findings)}
+{findings_md}
 
 ## 6. AI Investigations & Proposed Patches
 

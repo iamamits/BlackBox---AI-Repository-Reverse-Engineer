@@ -22,8 +22,8 @@ services:
       - NEBIUS_BASE_URL=${NEBIUS_BASE_URL:-https://api.studio.nebius.ai/v1}
       - NEBIUS_MODEL=${NEBIUS_MODEL:-meta-llama/Meta-Llama-3.1-70B-Instruct}
     volumes:
+      - ./backend/app:/app/app
       - backend-workspace:/app/workspace_data
-      - backend-db:/app
     restart: unless-stopped
 
   worker:
@@ -46,8 +46,8 @@ services:
       - NEBIUS_BASE_URL=${NEBIUS_BASE_URL:-https://api.studio.nebius.ai/v1}
       - NEBIUS_MODEL=${NEBIUS_MODEL:-meta-llama/Meta-Llama-3.1-70B-Instruct}
     volumes:
+      - ./backend/app:/app/app
       - backend-workspace:/app/workspace_data
-      - backend-db:/app
     depends_on:
       - backend
     restart: unless-stopped
