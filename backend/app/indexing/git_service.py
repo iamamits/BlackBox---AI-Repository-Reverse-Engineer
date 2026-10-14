@@ -75,9 +75,15 @@ async def clone_git_repo(url: str, dest_dir: Path, timeout_seconds: float = 90.0
         return False, reason
 
     # Clean existing destination if present
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir, ignore_errors=True)
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir, ignore_errors=True)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
+        log.warning("Primary dest_dir not writable, falling back to tempdir", error=str(e), dest=str(dest_dir))
+        import tempfile
+        dest_dir = Path(tempfile.gettempdir()) / "blackbox_workspace" / dest_dir.name
+        dest_dir.mkdir(parents=True, exist_ok=True)
 
     # ── Strategy 1: Fast Shallow Git Clone ──────────────────────────────────
     log.info("Attempting shallow git clone", url=url, dest=str(dest_dir))

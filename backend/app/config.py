@@ -121,10 +121,19 @@ class Settings(BaseSettings):
 
     @property
     def workspace_root(self) -> Path:
-        """Resolved, absolute workspace root path."""
-        p = self.blackbox_workspace_root.resolve()
-        p.mkdir(parents=True, exist_ok=True)
-        return p
+        """Resolved, absolute workspace root path with automatic fallback to writable temp dir."""
+        try:
+            p = self.blackbox_workspace_root.resolve()
+            p.mkdir(parents=True, exist_ok=True)
+            test_file = p / ".write_test"
+            test_file.touch(exist_ok=True)
+            test_file.unlink(missing_ok=True)
+            return p
+        except (PermissionError, OSError):
+            import tempfile
+            fallback = Path(tempfile.gettempdir()) / "blackbox_workspace"
+            fallback.mkdir(parents=True, exist_ok=True)
+            return fallback
 
 
 @lru_cache(maxsize=1)

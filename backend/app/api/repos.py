@@ -53,6 +53,19 @@ async def list_repos(
     )
 
 
+def _get_safe_workspace_dest(subfolder: str) -> Path:
+    settings = get_settings()
+    try:
+        dest = settings.workspace_root / subfolder
+        dest.mkdir(parents=True, exist_ok=True)
+        return dest
+    except (PermissionError, OSError):
+        import tempfile
+        dest = Path(tempfile.gettempdir()) / "blackbox_workspace" / subfolder
+        dest.mkdir(parents=True, exist_ok=True)
+        return dest
+
+
 @router.post(
     "/import/local",
     response_model=RepoRead,
@@ -73,7 +86,7 @@ async def import_local(
             detail=f"Path does not exist or is not a directory: {payload.path}",
         )
     # Security: ensure path doesn't escape
-    dest = settings.workspace_root / f"repo_{src.name}"
+    dest = _get_safe_workspace_dest(f"repo_{src.name}")
     repo = Repository(
         user_id=optional_user.id if optional_user else None,
         name=payload.name,
@@ -109,8 +122,7 @@ async def import_zip(
         )
     settings = get_settings()
     safe_name = Path(file.filename).stem[:100]
-    dest = settings.workspace_root / f"zip_{safe_name}"
-    dest.mkdir(parents=True, exist_ok=True)
+    dest = _get_safe_workspace_dest(f"zip_{safe_name}")
     zip_path = dest / "upload.zip"
 
     # Write upload (Milestone 3 will add size + bomb limits)
@@ -155,9 +167,8 @@ async def import_git(
             detail=err_msg,
         )
 
-    settings = get_settings()
     clean_name = payload.name.strip() if payload.name and payload.name.strip() else extract_repo_name(url)
-    dest = settings.workspace_root / f"repo_git_{clean_name}_{uuid.uuid4().hex[:6]}"
+    dest = _get_safe_workspace_dest(f"repo_git_{clean_name}_{uuid.uuid4().hex[:6]}")
 
     repo = Repository(
         user_id=optional_user.id if optional_user else None,

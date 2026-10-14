@@ -16,4 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir -p /app/workspace_data /tmp/blackbox_workspace && chmod -R 777 /app/workspace_data /tmp/blackbox_workspace
+
 CMD ["python", "-m", "app.worker"]

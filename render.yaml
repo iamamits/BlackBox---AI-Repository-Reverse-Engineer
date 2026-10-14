@@ -24,6 +24,8 @@ services:
         sync: false # Set to your Neon PostgreSQL connection string (postgresql+asyncpg://...)
       - key: STORAGE_BACKEND
         value: local # Change to 'r2' if using Cloudflare R2
+      - key: BLACKBOX_WORKSPACE_ROOT
+        value: /tmp/blackbox_workspace
       - key: R2_ACCOUNT_ID
         sync: false
       - key: R2_ACCESS_KEY_ID
