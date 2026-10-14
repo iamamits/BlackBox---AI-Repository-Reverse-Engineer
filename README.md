@@ -209,6 +209,38 @@ Visit [`http://localhost:3000`](http://localhost:3000) in your browser!
 
 ---
 
+### Method C: Production Cloud Deployment (Render + Vercel) 🌐
+
+BlackBox is architected for seamless separation of concerns between Vercel (Next.js Edge) and Render (FastAPI Python Engine):
+
+#### 1. Deploy Backend API to Render 🟣
+- **Option 1 (1-Click Blueprint)**: In your Render Dashboard, click **New +** -> **Blueprint**, select this repository, and Render will automatically detect [`render.yaml`](render.yaml).
+- **Option 2 (Manual Web Service)**:
+  - **Repository**: `https://github.com/iamamits/BlackBox---AI-Repository-Reverse-Engineer`
+  - **Root Directory**: `backend`
+  - **Environment**: `Python 3`
+  - **Build Command**: `pip install -r requirements.txt`
+  - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+  - **Health Check Path**: `/api/health`
+  - **Environment Variables**:
+    - `APP_ENV`: `production`
+    - `ALLOWED_ORIGINS`: `https://*.vercel.app,http://localhost:3000`
+    - `DATABASE_URL`: Your Neon PostgreSQL asyncpg connection URL
+    - `NEBIUS_API_KEY`: Your Nebius Token Factory inference key
+    - `STORAGE_BACKEND`: `local` (or `r2` with Cloudflare credentials)
+- Copy your live Render URL (e.g. `https://blackbox-api.onrender.com`).
+
+#### 2. Deploy Frontend Web App to Vercel ▲
+- In Vercel, click **Add New...** -> **Project** -> Import this repository.
+- **Framework Preset**: `Next.js` (auto-detected via [`frontend/vercel.json`](frontend/vercel.json)).
+- **Root Directory**: Click edit and select `frontend`.
+- **Environment Variables**:
+  - `NEXT_PUBLIC_API_URL`: Your Render backend URL (`https://blackbox-api.onrender.com`)
+- Click **Deploy**! 🚀
+- Your BlackBox platform is now live with global edge routing, automatic SSL, and continuous deployment!
+
+---
+
 ## ⚙️ Environment Variables
 
 BlackBox uses environment variables for configuration. Create your `backend/.env` based on `backend/.env.example`:
