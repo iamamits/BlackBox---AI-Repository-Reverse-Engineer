@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Union
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,12 +47,41 @@ class Settings(BaseSettings):
 
     # Workspace / Storage
     blackbox_workspace_root: Path = Path("./workspace_data")
-    storage_backend: Literal["local", "r2"] = "local"
+    storage_backend: Literal["local", "r2", "s3"] = "local"
     r2_account_id: str = ""
     r2_access_key_id: str = ""
     r2_secret_access_key: str = ""
     r2_bucket_name: str = ""
     r2_endpoint_url: str = ""
+
+    # S3 alias fields for Cloudflare R2 / S3 compatibility
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+
+    @field_validator("storage_backend", mode="before")
+    @classmethod
+    def normalize_storage_backend(cls, v: Any) -> str:
+        if isinstance(v, str):
+            v_clean = v.strip().lower()
+            if v_clean in ("s3", "r2", "cloudflare"):
+                return "r2"
+            return v_clean
+        return v
+
+    @model_validator(mode="after")
+    def resolve_storage_credentials(self) -> Settings:
+        """Alias S3_* credentials into r2_* variables if provided."""
+        if not self.r2_endpoint_url and self.s3_endpoint_url:
+            self.r2_endpoint_url = self.s3_endpoint_url
+        if not self.r2_bucket_name and self.s3_bucket:
+            self.r2_bucket_name = self.s3_bucket
+        if not self.r2_access_key_id and self.s3_access_key_id:
+            self.r2_access_key_id = self.s3_access_key_id
+        if not self.r2_secret_access_key and self.s3_secret_access_key:
+            self.r2_secret_access_key = self.s3_secret_access_key
+        return self
 
     # Nebius / NVIDIA Inference
     nebius_api_key: str = ""
